@@ -1,7 +1,7 @@
 # Keyward
 
 <p align="center">
-  <img src="images/keyward-logo-text-transparent.png" alt="Keyward" width="360">
+  <img src="images/keyward-logo-text-transparent-white.png" alt="Keyward" width="360">
 </p>
 
 [![CI](https://github.com/playup/keyward/actions/workflows/ci.yml/badge.svg)](https://github.com/playup/keyward/actions/workflows/ci.yml)
