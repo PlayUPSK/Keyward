@@ -11,3 +11,4 @@ platform/dev_ca/
 .env
 docs-internal/
 dist/
+build/
