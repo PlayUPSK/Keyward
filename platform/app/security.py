@@ -10,7 +10,7 @@ from app.models.base import utcnow
 def register_security(app):
     @app.before_request
     def enforce_rate_limit():
-        if request.endpoint == "static":
+        if request.endpoint in {"static", "health.healthz", "health.readyz"}:
             return None
         limited, retry_after = check_rate_limit(
             key=f"{request.remote_addr or 'unknown'}:{request.endpoint or request.path}",
