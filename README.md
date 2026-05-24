@@ -603,5 +603,4 @@ Production hardening still recommended:
 - add high-availability deployment manifests
 
 ## License
-
-License has not been declared yet. Add a license before publishing or accepting external contributions.
+This project is using GNU GENERAL PUBLIC LICENSE v3 License
