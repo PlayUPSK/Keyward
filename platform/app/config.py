@@ -21,6 +21,7 @@ class Config:
     SERVER_ENROLLMENT_MAX_TTL_MINUTES = int(os.environ.get("SERVER_ENROLLMENT_MAX_TTL_MINUTES", "1440"))
     SERVER_ENROLLMENT_MAX_USES_LIMIT = int(os.environ.get("SERVER_ENROLLMENT_MAX_USES_LIMIT", "100"))
     LOCAL_AUTH_ENABLED = os.environ.get("LOCAL_AUTH_ENABLED", "1") == "1"
+    REGISTRATION_ENABLED = os.environ.get("REGISTRATION_ENABLED", "1") == "1"
     DEV_AUTH_ENABLED = os.environ.get("DEV_AUTH_ENABLED", "0") == "1"
     ALLOWED_LOGIN_DOMAINS = [
         domain.strip().lower()

@@ -174,7 +174,7 @@
 
             <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
               <button type="submit" class="btn-primary" style="font-size:13px;">Save Configuration</button>
-              <form method="POST" action="{{ url_for(' admin.settings_integration_test', provider=integration.provider)
+              <form method="POST" action="{{ url_for('admin.settings_integration_test', provider=integration.provider)
                 }}" style="display:inline;">
               <button type="submit" class="btn-ghost" style="font-size:13px;">Test Connection</button>
         </form>
@@ -414,6 +414,22 @@
           </div>
 
           <div
+            style="padding:14px 16px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;display:flex;align-items:flex-start;gap:12px;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:13px;color:#e8eaed;">Self-Service Registration</div>
+              <div style="font-size:12px;color:var(--c-s4);margin-top:3px;line-height:1.5;">Allow new users to create
+                local accounts from the login page. Admin-created users and SSO provisioning are unaffected.</div>
+            </div>
+            {% if config.REGISTRATION_ENABLED and config.LOCAL_AUTH_ENABLED %}
+            <span class="sbadge sbadge-green">Enabled</span>
+            {% elif config.REGISTRATION_ENABLED and not config.LOCAL_AUTH_ENABLED %}
+            <span class="sbadge sbadge-amber">Blocked by local auth</span>
+            {% else %}
+            <span class="sbadge sbadge-muted">Disabled</span>
+            {% endif %}
+          </div>
+
+          <div
             style="padding:14px 16px;background:var(--c-bg);border:1px solid {% if config.DEV_AUTH_ENABLED %}rgba(245,158,11,.3){% else %}var(--c-s2){% endif %};border-radius:8px;display:flex;align-items:flex-start;gap:12px;">
             <div style="flex:1;">
               <div style="font-weight:600;font-size:13px;color:#e8eaed;">Development Auth</div>
@@ -449,7 +465,8 @@
         </div>
         <div
           style="margin-top:16px;padding:10px 12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:11px;color:var(--c-s4);line-height:1.6;">
-          Auth method flags are read-only in the UI. Set <code>LOCAL_AUTH_ENABLED</code>, <code>DEV_AUTH_ENABLED</code>
+          Auth method flags are read-only in the UI. Set <code>LOCAL_AUTH_ENABLED</code>,
+          <code>REGISTRATION_ENABLED</code>, <code>DEV_AUTH_ENABLED</code>
           in your environment or <code>.env</code> file and restart the platform.
         </div>
       </div>

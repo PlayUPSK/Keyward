@@ -17,6 +17,8 @@ USER_ROLE = "user"
 
 
 def login_local_user(email: str, password: str) -> tuple[User | None, str | None]:
+    if not current_app.config["LOCAL_AUTH_ENABLED"]:
+        return None, "local_auth_disabled"
     normalized_email = email.strip().lower()
     user = User.query.filter_by(email=normalized_email).one_or_none()
     if user is None or not user.password_hash:
@@ -152,10 +154,19 @@ def _complete_login(user: User, provider: str) -> tuple[User | None, str | None]
     return user, None
 
 
-def create_local_user(email: str, password: str, display_name: str | None, roles: list[str]) -> tuple[dict, int]:
+def create_local_user(
+    email: str,
+    password: str,
+    display_name: str | None,
+    roles: list[str],
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> tuple[dict, int]:
+    display_name = _display_name(display_name, first_name, last_name, email)
     user, error = register_local_user(email, password, display_name)
     if error:
         return {"error": error}, 400
+    user.external_id = _profile_external_id(user.external_id, first_name, last_name)
     for role in roles:
         if role:
             _ensure_role(user, role)
@@ -279,18 +290,29 @@ def set_user_status(user_id: str, status: str) -> tuple[dict, int]:
     return {"user_id": str(user.id), "status": status}, 200
 
 
-def update_user_profile(user_id: str, display_name: str | None, external_id: str | None) -> tuple[dict, int]:
+def update_user_profile(
+    user_id: str,
+    display_name: str | None,
+    external_id: str | None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> tuple[dict, int]:
     user, error_response = _user_from_id(user_id)
     if error_response:
         return error_response
-    user.display_name = display_name or user.email
-    user.external_id = external_id or None
+    user.display_name = _display_name(display_name, first_name, last_name, user.email)
+    user.external_id = _profile_external_id(external_id, first_name, last_name)
     record_audit_event(
         event_type="user.profile_updated",
         outcome="success",
         target_type="user",
         target_id=user.id,
-        metadata={"display_name": user.display_name, "external_id": user.external_id},
+        metadata={
+            "display_name": user.display_name,
+            "external_id": external_id,
+            "first_name": (first_name or "").strip(),
+            "last_name": (last_name or "").strip(),
+        },
     )
     db.session.commit()
     return {"user_id": str(user.id)}, 200
@@ -367,11 +389,16 @@ def list_users_with_roles() -> list[dict]:
             .all()
         )
         servers = accessible_servers_for_user(user.id)
+        first_name, last_name, directory_id = _profile_parts(user.external_id)
         result.append(
             {
             "id": str(user.id),
             "email": user.email,
             "display_name": user.display_name,
+            "first_name": first_name,
+            "last_name": last_name,
+            "directory_id": directory_id,
+            "initials": _initials(first_name, last_name, user.display_name, user.email),
             "status": user.status,
             "auth_provider": user.auth_provider,
             "external_id": user.external_id,
@@ -390,6 +417,52 @@ def list_users_with_roles() -> list[dict]:
         }
         )
     return result
+
+
+def _display_name(display_name: str | None, first_name: str | None, last_name: str | None, email: str) -> str:
+    explicit = (display_name or "").strip()
+    if explicit:
+        return explicit
+    full_name = " ".join(part for part in [(first_name or "").strip(), (last_name or "").strip()] if part)
+    return full_name or email
+
+
+def _profile_external_id(external_id: str | None, first_name: str | None, last_name: str | None) -> str | None:
+    directory_id = (external_id or "").strip()
+    parts = []
+    if directory_id:
+        parts.append(directory_id)
+    first_name = (first_name or "").strip()
+    last_name = (last_name or "").strip()
+    if first_name:
+        parts.append(f"first_name={first_name}")
+    if last_name:
+        parts.append(f"last_name={last_name}")
+    return "|".join(parts) or None
+
+
+def _profile_parts(external_id: str | None) -> tuple[str, str, str | None]:
+    first_name = ""
+    last_name = ""
+    directory_parts = []
+    for part in (external_id or "").split("|"):
+        if part.startswith("first_name="):
+            first_name = part.removeprefix("first_name=")
+        elif part.startswith("last_name="):
+            last_name = part.removeprefix("last_name=")
+        elif part:
+            directory_parts.append(part)
+    return first_name, last_name, "|".join(directory_parts) or None
+
+
+def _initials(first_name: str, last_name: str, display_name: str | None, email: str) -> str:
+    if first_name or last_name:
+        return f"{first_name[:1]}{last_name[:1]}".upper() or "U"
+    name = (display_name or email or "U").strip()
+    parts = [part for part in name.split() if part]
+    if len(parts) >= 2:
+        return f"{parts[0][:1]}{parts[-1][:1]}".upper()
+    return name[:2].upper()
 
 
 def _domain_allowed(email: str) -> bool:

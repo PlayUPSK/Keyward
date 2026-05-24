@@ -8,7 +8,13 @@
   </div>
   <div class="page-actions">
     <button class="btn-primary" onclick="_openModal('createUserModal')">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <line x1="19" y1="8" x2="19" y2="14" />
+        <line x1="22" y1="11" x2="16" y2="11" />
+      </svg>
       Create User
     </button>
   </div>
@@ -17,20 +23,50 @@
 <!-- Summary -->
 <div class="metric-grid" style="margin-bottom:24px;">
   <div class="metric-tile">
-    <div class="metric-icon mi-blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 1-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-    <div><div class="metric-val">{{ user_summary.total }}</div><div class="metric-label">Total Users</div></div>
+    <div class="metric-icon mi-blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 1-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg></div>
+    <div>
+      <div class="metric-val">{{ user_summary.total }}</div>
+      <div class="metric-label">Total Users</div>
+    </div>
   </div>
   <div class="metric-tile">
-    <div class="metric-icon mi-purple"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-    <div><div class="metric-val">{{ user_summary.admins }}</div><div class="metric-label">Administrators</div></div>
+    <div class="metric-icon mi-purple"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg></div>
+    <div>
+      <div class="metric-val">{{ user_summary.admins }}</div>
+      <div class="metric-label">Administrators</div>
+    </div>
   </div>
   <div class="metric-tile">
-    <div class="metric-icon mi-green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg></div>
-    <div><div class="metric-val">{{ user_summary.trusted_devices }}</div><div class="metric-label">Trusted Devices</div></div>
+    <div class="metric-icon mi-green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="14" height="20" x="5" y="2" rx="2" />
+        <path d="M12 18h.01" />
+      </svg></div>
+    <div>
+      <div class="metric-val">{{ user_summary.trusted_devices }}</div>
+      <div class="metric-label">Trusted Devices</div>
+    </div>
   </div>
   <div class="metric-tile">
-    <div class="metric-icon mi-amber"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-    <div><div class="metric-val">{{ user_summary.suspended }}</div><div class="metric-label">Suspended</div></div>
+    <div class="metric-icon mi-amber"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg></div>
+    <div>
+      <div class="metric-val">{{ user_summary.suspended }}</div>
+      <div class="metric-label">Suspended</div>
+    </div>
   </div>
 </div>
 
@@ -44,8 +80,12 @@
 <div id="tab-users">
   <div class="s-card">
     <div class="s-card-head">
-      <div><div class="s-card-title">All Users</div><div class="s-card-sub">Click a row to expand details and manage roles</div></div>
-      <input class="form-filter" type="text" placeholder="Filter users…" data-filter-input data-filter-target="#users-tbody tr.user-row">
+      <div>
+        <div class="s-card-title">All Users</div>
+        <div class="s-card-sub">Click a row to expand details and manage roles</div>
+      </div>
+      <input class="form-filter" type="text" placeholder="Filter users…" data-filter-input
+        data-filter-target="#users-tbody tr.user-row">
     </div>
     <div class="dt-wrap">
       <table class="dt">
@@ -65,21 +105,32 @@
           {% for user in users %}
           <tr class="user-row" style="cursor:pointer;" onclick="_expandRow('u-{{ user.id }}')">
             <td>
-              <span data-expand-icon="u-{{ user.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span>
+              <span data-expand-icon="u-{{ user.id }}"
+                style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span>
             </td>
             <td>
-              <div style="font-weight:500;color:#e8eaed;">{{ user.display_name or user.email }}</div>
-              <div style="font-size:11px;color:var(--c-s4);">{{ user.email }}</div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div
+                  style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.22),rgba(34,197,94,.14));border:1px solid var(--c-s2);display:flex;align-items:center;justify-content:center;color:#e8eaed;font-size:12px;font-weight:700;flex-shrink:0;">
+                  {{ user.initials }}</div>
+                <div>
+                  <div style="font-weight:500;color:#e8eaed;">{{ user.display_name or user.email }}</div>
+                  <div style="font-size:11px;color:var(--c-s4);">{{ user.email }}</div>
+                  {% if user.first_name or user.last_name %}<div style="font-size:11px;color:var(--c-s3);">{{
+                    user.first_name }} {{ user.last_name }}</div>{% endif %}
+                </div>
+              </div>
             </td>
             <td>
               {% for role in user.roles %}
-                {% if role == 'admin' %}<span class="sbadge sbadge-purple" style="margin:1px;">admin</span>
-                {% else %}<span class="sbadge sbadge-blue" style="margin:1px;">{{ role }}</span>{% endif %}
+              {% if role == 'admin' %}<span class="sbadge sbadge-purple" style="margin:1px;">admin</span>
+              {% else %}<span class="sbadge sbadge-blue" style="margin:1px;">{{ role }}</span>{% endif %}
               {% else %}<span style="color:var(--c-s3);font-size:12px;">—</span>{% endfor %}
             </td>
             <td>
               {% for g in user.groups[:3] %}<span class="tag" style="margin:1px;">{{ g.name }}</span>{% endfor %}
-              {% if user.groups|length > 3 %}<span style="font-size:11px;color:var(--c-s4);">+{{ user.groups|length - 3 }}</span>{% endif %}
+              {% if user.groups|length > 3 %}<span style="font-size:11px;color:var(--c-s4);">+{{ user.groups|length - 3
+                }}</span>{% endif %}
               {% if not user.groups %}<span style="color:var(--c-s3);font-size:12px;">—</span>{% endif %}
             </td>
             <td>
@@ -102,11 +153,40 @@
 
                 <!-- Col 1: Identity -->
                 <div style="padding:16px 20px;border-right:1px solid var(--c-s2);">
-                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Identity</div>
+                  <div
+                    style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">
+                    Identity</div>
                   <div style="display:flex;flex-direction:column;gap:6px;">
+                    <form method="POST" action="{{ url_for('admin.users_update_profile', user_id=user.id) }}"
+                      style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                      <div>
+                        <label class="form-label" style="font-size:10px;margin-bottom:3px;">First Name</label>
+                        <input class="form-input" name="first_name" value="{{ user.first_name }}" placeholder="Jane"
+                          style="font-size:12px;padding:6px 8px;">
+                      </div>
+                      <div>
+                        <label class="form-label" style="font-size:10px;margin-bottom:3px;">Last Name</label>
+                        <input class="form-input" name="last_name" value="{{ user.last_name }}" placeholder="Smith"
+                          style="font-size:12px;padding:6px 8px;">
+                      </div>
+                      <div style="grid-column:1/-1;">
+                        <label class="form-label" style="font-size:10px;margin-bottom:3px;">Display Name</label>
+                        <input class="form-input" name="display_name" value="{{ user.display_name or '' }}"
+                          placeholder="Jane Smith" style="font-size:12px;padding:6px 8px;">
+                      </div>
+                      <div style="grid-column:1/-1;">
+                        <label class="form-label" style="font-size:10px;margin-bottom:3px;">Directory / External
+                          ID</label>
+                        <input class="form-input" name="external_id" value="{{ user.directory_id or '' }}"
+                          placeholder="OIDC subject, SAML NameID, SCIM id" style="font-size:12px;padding:6px 8px;">
+                      </div>
+                      <button class="btn-ghost" type="submit"
+                        style="grid-column:1/-1;font-size:11px;padding:5px 10px;">Save Profile</button>
+                    </form>
                     <div style="display:flex;justify-content:space-between;font-size:12px;">
                       <span style="color:var(--c-s4);">ID</span>
-                      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#e8eaed;">{{ user.id[:8] }}…</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#e8eaed;">{{ user.id[:8]
+                        }}…</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;font-size:12px;">
                       <span style="color:var(--c-s4);">Provider</span>
@@ -115,7 +195,9 @@
                     {% if user.external_id %}
                     <div style="display:flex;justify-content:space-between;font-size:12px;">
                       <span style="color:var(--c-s4);">External ID</span>
-                      <span style="font-size:11px;color:#c8d3e6;">{{ user.external_id }}</span>
+                      <span
+                        style="font-size:11px;color:#c8d3e6;word-break:break-all;text-align:right;max-width:210px;">{{
+                        user.directory_id or user.external_id }}</span>
                     </div>
                     {% endif %}
                     <div style="display:flex;justify-content:space-between;font-size:12px;">
@@ -123,23 +205,27 @@
                       <span style="color:#c8d3e6;">{{ user.created_at[:10] if user.created_at else '—' }}</span>
                     </div>
                     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-                      <form method="POST" action="{{ url_for('admin.users_update_profile', user_id=user.id) }}" style="display:contents;">
-                        <input type="hidden" name="display_name" value="{{ user.display_name or '' }}">
-                      </form>
                       <form method="POST" action="{{ url_for('admin.users_set_status', user_id=user.id) }}">
                         {% if user.status == 'active' %}
                         <input type="hidden" name="status" value="suspended">
-                        <button class="btn-ghost" type="submit" style="font-size:11px;padding:4px 10px;color:var(--c-amber);border-color:rgba(245,158,11,.3);" onclick="return confirm('Suspend {{ user.email }}?')">Suspend</button>
+                        <button class="btn-ghost" type="submit"
+                          style="font-size:11px;padding:4px 10px;color:var(--c-amber);border-color:rgba(245,158,11,.3);"
+                          onclick="return confirm('Suspend {{ user.email }}?')">Suspend</button>
                         {% else %}
                         <input type="hidden" name="status" value="active">
-                        <button class="btn-ghost" type="submit" style="font-size:11px;padding:4px 10px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Reactivate</button>
+                        <button class="btn-ghost" type="submit"
+                          style="font-size:11px;padding:4px 10px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Reactivate</button>
                         {% endif %}
                       </form>
-                      <form method="POST" action="{{ url_for('admin.users_reset_password', user_id=user.id) }}" onsubmit="return confirm('Reset password for {{ user.email }}?')">
-                        <button class="btn-ghost" type="submit" style="font-size:11px;padding:4px 10px;">Reset Pwd</button>
+                      <form method="POST" action="{{ url_for('admin.users_reset_password', user_id=user.id) }}"
+                        onsubmit="return confirm('Reset password for {{ user.email }}?')">
+                        <button class="btn-ghost" type="submit" style="font-size:11px;padding:4px 10px;">Reset
+                          Pwd</button>
                       </form>
-                      <form method="POST" action="{{ url_for('admin.users_delete', user_id=user.id) }}" onsubmit="return confirm('Delete {{ user.email }}? This revokes devices, removes roles/groups, and anonymizes the account.')">
-                        <button class="btn-danger" type="submit" style="font-size:11px;padding:4px 10px;">Delete</button>
+                      <form method="POST" action="{{ url_for('admin.users_delete', user_id=user.id) }}"
+                        onsubmit="return confirm('Delete {{ user.email }}? This revokes devices, removes roles/groups, and anonymizes the account.')">
+                        <button class="btn-danger" type="submit"
+                          style="font-size:11px;padding:4px 10px;">Delete</button>
                       </form>
                     </div>
                   </div>
@@ -147,11 +233,15 @@
 
                 <!-- Col 2: RBAC -->
                 <div style="padding:16px 20px;border-right:1px solid var(--c-s2);">
-                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Roles</div>
+                  <div
+                    style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">
+                    Roles</div>
                   <div style="display:flex;flex-direction:column;gap:6px;">
-                    {% set role_list = [('admin', 'Administrator — full platform access', 'sbadge-purple'), ('user', 'User — portal access only', 'sbadge-blue')] %}
+                    {% set role_list = [('admin', 'Administrator — full platform access', 'sbadge-purple'), ('user',
+                    'User — portal access only', 'sbadge-blue')] %}
                     {% for role_name, role_desc, role_cls in role_list %}
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:7px;">
+                    <div
+                      style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:7px;">
                       <div>
                         <span class="sbadge {{ role_cls }}">{{ role_name }}</span>
                         <div style="font-size:11px;color:var(--c-s3);margin-top:2px;">{{ role_desc }}</div>
@@ -164,7 +254,8 @@
                       {% else %}
                       <form method="POST" action="{{ url_for('admin.users_assign_role', user_id=user.id) }}">
                         <input type="hidden" name="role" value="{{ role_name }}">
-                        <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 8px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Assign</button>
+                        <button class="btn-ghost" type="submit"
+                          style="font-size:11px;padding:3px 8px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Assign</button>
                       </form>
                       {% endif %}
                     </div>
@@ -174,24 +265,31 @@
 
                 <!-- Col 3: Groups & Access -->
                 <div style="padding:16px 20px;">
-                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Groups &amp; Access</div>
+                  <div
+                    style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">
+                    Groups &amp; Access</div>
                   {% if user.groups %}
                   <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
                     {% for g in user.groups %}
-                    <span class="tag" style="{% if g.source != 'local' %}border:1px solid var(--c-s2);{% endif %}">{{ g.name }}{% if g.source != 'local' %} <span style="font-size:9px;opacity:.6;">{{ g.source }}</span>{% endif %}</span>
+                    <span class="tag" style="{% if g.source != 'local' %}border:1px solid var(--c-s2);{% endif %}">{{
+                      g.name }}{% if g.source != 'local' %} <span style="font-size:9px;opacity:.6;">{{ g.source
+                        }}</span>{% endif %}</span>
                     {% endfor %}
                   </div>
                   {% else %}
                   <div style="font-size:12px;color:var(--c-s3);margin-bottom:10px;">No group memberships</div>
                   {% endif %}
-                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:6px;">Accessible Servers</div>
+                  <div
+                    style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:6px;">
+                    Accessible Servers</div>
                   {% if user.accessible_servers %}
                   <div style="display:flex;flex-direction:column;gap:3px;">
                     {% for srv in user.accessible_servers %}
                     <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#c8d3e6;">{{ srv }}</span>
                     {% endfor %}
                     {% if user.accessible_server_count > user.accessible_servers|length %}
-                    <span style="font-size:11px;color:var(--c-s4);">+{{ user.accessible_server_count - user.accessible_servers|length }} more</span>
+                    <span style="font-size:11px;color:var(--c-s4);">+{{ user.accessible_server_count -
+                      user.accessible_servers|length }} more</span>
                     {% endif %}
                   </div>
                   {% else %}
@@ -203,7 +301,9 @@
             </td>
           </tr>
           {% else %}
-          <tr><td colspan="8" class="dt-empty">No users found.</td></tr>
+          <tr>
+            <td colspan="8" class="dt-empty">No users found.</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -217,7 +317,8 @@
     <div class="s-card-head">
       <div>
         <div class="s-card-title">Identity Groups</div>
-        <div class="s-card-sub">Groups sync from external providers (Okta, LDAP) or are created locally. Use groups as subjects in Access Grants.</div>
+        <div class="s-card-sub">Groups sync from external providers (Okta, LDAP) or are created locally. Use groups as
+          subjects in Access Grants.</div>
       </div>
     </div>
     <div class="dt-wrap">
@@ -233,11 +334,11 @@
         <tbody>
           {% set all_groups = [] %}
           {% for user in users %}
-            {% for g in user.groups %}
-              {% if g.id not in all_groups|map(attribute='id')|list %}
-                {% set _ = all_groups.append(g) %}
-              {% endif %}
-            {% endfor %}
+          {% for g in user.groups %}
+          {% if g.id not in all_groups|map(attribute='id')|list %}
+          {% set _ = all_groups.append(g) %}
+          {% endif %}
+          {% endfor %}
           {% endfor %}
           {% for g in all_groups %}
           <tr>
@@ -254,25 +355,36 @@
             <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ g.id[:12] }}…</td>
           </tr>
           {% else %}
-          <tr><td colspan="4" class="dt-empty">No groups found. Groups are created by syncing an identity provider in Settings.</td></tr>
+          <tr>
+            <td colspan="4" class="dt-empty">No groups found. Groups are created by syncing an identity provider in
+              Settings.</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     <div style="padding:12px 20px;background:rgba(59,130,246,.05);border-top:1px solid var(--c-s2);">
       <div style="font-size:12px;color:var(--c-s4);">
-        <strong style="color:var(--c-blue);">Tip:</strong> Assign groups to Access Grants in the <a href="{{ url_for('admin.policies') }}" style="color:var(--c-blue);">Policies &amp; Grants</a> page. When a user belongs to a group with a grant, they automatically inherit SSH access to the scoped servers.
+        <strong style="color:var(--c-blue);">Tip:</strong> Assign groups to Access Grants in the <a
+          href="{{ url_for('admin.policies') }}" style="color:var(--c-blue);">Policies &amp; Grants</a> page. When a
+        user belongs to a group with a grant, they automatically inherit SSH access to the scoped servers.
       </div>
     </div>
   </div>
 </div>
 
 <!-- ── CREATE USER MODAL ──────────────────────────────────────── -->
-<div class="modal-overlay" id="createUserModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+<div class="modal-overlay" id="createUserModal" style="display:none;"
+  onclick="if(event.target===this)this.style.display='none'">
   <div class="modal-box" style="max-width:460px;">
     <div class="modal-head">
       <div class="modal-title">Create User</div>
-      <button class="modal-close" onclick="document.getElementById('createUserModal').style.display='none'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="document.getElementById('createUserModal').style.display='none'"><svg
+          xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg></button>
     </div>
     <form method="POST" action="{{ url_for('admin.users_create') }}">
       <div class="modal-body">
@@ -281,8 +393,15 @@
           <input class="form-input" name="email" type="email" required placeholder="user@example.com">
         </div>
         <div class="form-group">
+          <label class="form-label">Name</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <input class="form-input" name="first_name" placeholder="First name">
+            <input class="form-input" name="last_name" placeholder="Last name">
+          </div>
+        </div>
+        <div class="form-group">
           <label class="form-label">Display Name</label>
-          <input class="form-input" name="display_name" placeholder="Full name">
+          <input class="form-input" name="display_name" placeholder="Optional override">
         </div>
         <div class="form-group">
           <label class="form-label">Password <span style="color:var(--c-red);">*</span></label>
@@ -301,7 +420,8 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn-ghost" onclick="document.getElementById('createUserModal').style.display='none'">Cancel</button>
+        <button type="button" class="btn-ghost"
+          onclick="document.getElementById('createUserModal').style.display='none'">Cancel</button>
         <button type="submit" class="btn-primary">Create User</button>
       </div>
     </form>
@@ -309,29 +429,52 @@
 </div>
 
 <style>
-  .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--c-s4); cursor:pointer; font-size:13px; font-weight:500; font-family:inherit; padding:8px 16px; margin-bottom:-1px; transition:color .15s, border-color .15s; }
-  .tab-btn:hover { color:#e8eaed; }
-  .tab-active { color:var(--c-blue) !important; border-bottom-color:var(--c-blue) !important; }
-  .sbadge-purple { background:rgba(168,85,247,.12); color:var(--c-purple); }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--c-s4);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 8px 16px;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+  }
+
+  .tab-btn:hover {
+    color: #e8eaed;
+  }
+
+  .tab-active {
+    color: var(--c-blue) !important;
+    border-bottom-color: var(--c-blue) !important;
+  }
+
+  .sbadge-purple {
+    background: rgba(168, 85, 247, .12);
+    color: var(--c-purple);
+  }
 </style>
 
 {% endblock %}
 {% block scripts %}
 <script>
-function _tab(name) {
-  ['users','groups'].forEach(t => {
-    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
-    document.getElementById('tab-btn-' + t).classList.toggle('tab-active', t === name);
-  });
-}
-function _expandRow(id) {
-  const row = document.getElementById('expand-' + id);
-  const icon = document.querySelector('[data-expand-icon="' + id + '"]');
-  if (!row) return;
-  const open = row.style.display !== 'none';
-  row.style.display = open ? 'none' : 'table-row';
-  if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
-}
-function _openModal(id) { document.getElementById(id).style.display = 'flex'; }
+  function _tab(name) {
+    ['users', 'groups'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+      document.getElementById('tab-btn-' + t).classList.toggle('tab-active', t === name);
+    });
+  }
+  function _expandRow(id) {
+    const row = document.getElementById('expand-' + id);
+    const icon = document.querySelector('[data-expand-icon="' + id + '"]');
+    if (!row) return;
+    const open = row.style.display !== 'none';
+    row.style.display = open ? 'none' : 'table-row';
+    if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+  }
+  function _openModal(id) { document.getElementById(id).style.display = 'flex'; }
 </script>
 {% endblock %}

@@ -11,19 +11,23 @@
   {% if sso and (sso.oidc or sso.saml) %}
   <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
     {% if sso.oidc %}
-    <a class="btn-primary" href="{{ url_for('auth.oidc_login') }}" style="width:100%;justify-content:center;text-decoration:none;">Sign in with Microsoft Entra ID</a>
+    <a class="btn-primary" href="{{ url_for('auth.oidc_login') }}"
+      style="width:100%;justify-content:center;text-decoration:none;">Sign in with Microsoft Entra ID</a>
     {% endif %}
     {% if sso.saml %}
-    <a class="btn-ghost" href="{{ url_for('auth.saml_login') }}" style="width:100%;justify-content:center;text-decoration:none;">Sign in with SAML SSO</a>
+    <a class="btn-ghost" href="{{ url_for('auth.saml_login') }}"
+      style="width:100%;justify-content:center;text-decoration:none;">Sign in with SAML SSO</a>
     {% endif %}
   </div>
-  <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--c-s4);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">
+  <div
+    style="display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--c-s4);font-size:11px;text-transform:uppercase;letter-spacing:.08em;">
     <span style="height:1px;background:var(--c-s2);flex:1;"></span>
     Local Login
     <span style="height:1px;background:var(--c-s2);flex:1;"></span>
   </div>
   {% endif %}
 
+  {% if config.LOCAL_AUTH_ENABLED %}
   <form method="POST" action="{{ url_for('auth.login_post') }}">
     <div class="form-group">
       <label class="form-label">Email</label>
@@ -36,14 +40,24 @@
     <button class="btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:4px;">Sign In</button>
   </form>
 
+  {% if config.REGISTRATION_ENABLED %}
   <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--c-s4);">
     Don't have an account?
     <a href="{{ url_for('auth.register') }}" style="color:var(--c-blue);">Create account</a>
   </div>
+  {% endif %}
+  {% elif not sso or not (sso.oidc or sso.saml) %}
+  <div
+    style="padding:14px 16px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.22);border-radius:8px;color:var(--c-s4);font-size:13px;line-height:1.5;">
+    Local login is disabled and no SSO provider is configured.
+  </div>
+  {% endif %}
 
   {% if config.DEV_AUTH_ENABLED %}
   <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--c-s2);">
-    <div style="font-size:11px;text-align:center;color:var(--c-s3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">Dev Login</div>
+    <div
+      style="font-size:11px;text-align:center;color:var(--c-s3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">
+      Dev Login</div>
     <form method="POST" action="{{ url_for('auth.dev_login_post') }}">
       <div class="form-group">
         <input class="form-input" name="email" type="email" placeholder="dev@example.com" style="font-size:12px;">
@@ -51,7 +65,8 @@
       <div class="form-group">
         <input class="form-input" name="display_name" placeholder="Display Name (optional)" style="font-size:12px;">
       </div>
-      <button class="btn-ghost" type="submit" style="width:100%;justify-content:center;font-size:12px;">Dev Sign In (no password)</button>
+      <button class="btn-ghost" type="submit" style="width:100%;justify-content:center;font-size:12px;">Dev Sign In (no
+        password)</button>
     </form>
   </div>
   {% endif %}

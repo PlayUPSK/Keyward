@@ -14,14 +14,22 @@
       <input class="form-input" name="email" type="email" required placeholder="you@example.com" autofocus>
     </div>
     <div class="form-group">
+      <label class="form-label">Name</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input class="form-input" name="first_name" placeholder="First name">
+        <input class="form-input" name="last_name" placeholder="Last name">
+      </div>
+    </div>
+    <div class="form-group">
       <label class="form-label">Display Name</label>
-      <input class="form-input" name="display_name" placeholder="Your name">
+      <input class="form-input" name="display_name" placeholder="Optional override">
     </div>
     <div class="form-group">
       <label class="form-label">Password <span style="color:var(--c-red);">*</span></label>
       <input class="form-input" name="password" type="password" required placeholder="Choose a strong password">
     </div>
-    <button class="btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:4px;">Create Account</button>
+    <button class="btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:4px;">Create
+      Account</button>
   </form>
 
   <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--c-s4);">

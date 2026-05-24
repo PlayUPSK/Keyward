@@ -12,3 +12,4 @@ platform/dev_ca/
 docs-internal/
 dist/
 build/
+*.old
