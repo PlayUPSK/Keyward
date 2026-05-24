@@ -4,8 +4,8 @@
   <img src="images/keyward-logo-text-transparent-white.png" alt="Keyward" width="360">
 </p>
 
-[![CI](https://github.com/playup/keyward/actions/workflows/ci.yml/badge.svg)](https://github.com/playup/keyward/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/playup/keyward/actions/workflows/codeql.yml/badge.svg)](https://github.com/playup/keyward/actions/workflows/codeql.yml)
+[![CI](https://github.com/PlayUPSK/Keyward/actions/workflows/ci.yml/badge.svg)](https://github.com/PlayUPSK/Keyward/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/PlayUPSK/Keyward/actions/workflows/codeql.yml/badge.svg)](https://github.com/PlayUPSK/Keyward/actions/workflows/codeql.yml)
 
 Keyward is a zero-trust SSH access platform for replacing long-lived user SSH keys with device-bound authentication and short-lived OpenSSH user certificates.
 
