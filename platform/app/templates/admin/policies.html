@@ -177,10 +177,24 @@
                     Conditions</div>
                   {% if policy.conditions %}
                   <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                    {% if policy.conditions.get('device_status') %}
+                    <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">Device</span><span
+                        class="code-block" style="font-size:10px;padding:1px 6px;">Device: {{ policy.conditions.device_status }}</span></div>
+                    {% endif %}
+                    {% if policy.conditions.get('server_environment') %}
+                    <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">Server</span><span
+                        class="code-block" style="font-size:10px;padding:1px 6px;">Server: {{ policy.conditions.server_environment }}</span></div>
+                    {% endif %}
+                    {% if policy.conditions.get('ssh_principal') %}
+                    <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">Principal</span><span
+                        class="code-block" style="font-size:10px;padding:1px 6px;">Principal: {{ policy.conditions.ssh_principal }}</span></div>
+                    {% endif %}
                     {% for k, v in policy.conditions.items() %}
+                    {% if k not in ('device_status','server_environment','ssh_principal') %}
                     <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">{{
                         k.replace('_',' ') }}</span><span class="code-block" style="font-size:10px;padding:1px 6px;">{{
                         v }}</span></div>
+                    {% endif %}
                     {% endfor %}
                   </div>
                   {% else %}<div style="font-size:12px;color:var(--c-s3);">Matches all requests (no conditions)</div>{%
@@ -197,9 +211,14 @@
                     {% if policy.actions %}
                     {% for k, v in policy.actions.items() %}
                     {% if k not in ('invalidated','invalidated_at','invalidated_reason') %}
+                    {% if k == 'ttl_seconds' %}
+                    <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">TTL</span><span
+                        class="code-block" style="font-size:10px;padding:1px 6px;">TTL: {{ v }} seconds</span></div>
+                    {% else %}
                     <div style="display:flex;gap:8px;"><span style="color:var(--c-s4);min-width:130px;">{{
                         k.replace('_',' ') }}</span><span class="code-block" style="font-size:10px;padding:1px 6px;">{{
                         v }}</span></div>
+                    {% endif %}
                     {% endif %}
                     {% endfor %}
                     {% endif %}
@@ -272,6 +291,7 @@
               <div style="font-size:11px;color:var(--c-s4);margin-top:1px;">{{ grant.server_scope_type }}</div>
             </td>
             <td>
+              <div style="font-size:11px;color:var(--c-s4);margin-bottom:4px;">{{ grant.unix_principals|join(', ') }}</div>
               {% for p in grant.unix_principals %}<span class="tag"
                 style="font-family:'JetBrains Mono',monospace;font-size:11px;margin:1px;">{{ p }}</span>{% endfor %}
             </td>
