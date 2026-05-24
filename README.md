@@ -5,7 +5,6 @@
 </p>
 
 [![CI](https://github.com/PlayUPSK/Keyward/actions/workflows/ci.yml/badge.svg)](https://github.com/PlayUPSK/Keyward/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/PlayUPSK/Keyward/actions/workflows/codeql.yml/badge.svg)](https://github.com/PlayUPSK/Keyward/actions/workflows/codeql.yml)
 
 Keyward is a zero-trust SSH access platform for replacing long-lived user SSH keys with device-bound authentication and short-lived OpenSSH user certificates.
 
@@ -49,7 +48,7 @@ This project keeps the server-side SSH path OpenSSH-native while moving access d
 - Continuous server-agent watch mode for near-real-time revocation
 - Audit events for issuance, denial, revocation, enrollment, and admin actions
 - Cross-platform Go builds for Windows, macOS, and Linux
-- GitHub Actions CI, CodeQL scanning, Dependabot, and release packaging
+- GitHub Actions CI, GitHub code scanning, Dependabot, and release packaging
 
 ## Architecture
 
@@ -176,7 +175,7 @@ keyward-server-agent watch --interval 2s
 
 ```text
 .
-|-- .github/workflows       GitHub Actions CI, CodeQL, release workflows
+|-- .github/workflows       GitHub Actions CI and release workflows
 |-- agents
 |   |-- device-client       Go desktop client, local SSH agent, tray app
 |   `-- server-agent        Go SSH server enrollment and KRL sync agent
@@ -525,7 +524,7 @@ go test ./...
 GitHub Actions workflows are included:
 
 - `CI`: Python lint/test/compile, Go tests, and cross-platform Go builds
-- `CodeQL`: Python and Go security analysis
+- GitHub CodeQL default setup: code scanning managed in repository security settings
 - `Release`: builds release artifacts on `v*` tags
 - `Dependabot`: dependency update PRs for Actions, Python, and Go modules
 
