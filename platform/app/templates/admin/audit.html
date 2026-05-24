@@ -1,0 +1,232 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Explorer{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Audit Explorer</h1>
+    <div class="page-sub">Immutable, hash-chained log of all platform security events</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn-ghost" href="{{ url_for('admin.audit') }}" style="font-size:12px;">Reset Filters</a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="s-card" style="margin-bottom:16px;">
+  <div style="padding:12px 16px;">
+    <form method="GET" action="{{ url_for('admin.audit') }}" id="auditFilterForm">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Event Type</label>
+          <select class="form-select-input" name="event_type" style="width:180px;padding:6px 10px;font-size:12px;">
+            <option value="">All types</option>
+            {% for et in filters.event_types %}
+            <option value="{{ et }}" {% if selected_filters.event_type == et %}selected{% endif %}>{{ et }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Outcome</label>
+          <select class="form-select-input" name="outcome" style="width:140px;padding:6px 10px;font-size:12px;">
+            <option value="">All outcomes</option>
+            {% for oc in filters.outcomes %}
+            <option value="{{ oc }}" {% if selected_filters.outcome == oc %}selected{% endif %}>{{ oc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Target Type</label>
+          <select class="form-select-input" name="target_type" style="width:140px;padding:6px 10px;font-size:12px;">
+            <option value="">All targets</option>
+            {% for tt in filters.target_types %}
+            <option value="{{ tt }}" {% if selected_filters.target_type == tt %}selected{% endif %}>{{ tt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Source IP</label>
+          <input class="form-input" name="source_ip" value="{{ selected_filters.source_ip }}" placeholder="e.g. 10.0.0.1" style="width:140px;padding:6px 10px;font-size:12px;">
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Search Metadata</label>
+          <input class="form-input" name="metadata_query" value="{{ selected_filters.metadata_query }}" placeholder="hostname, principal…" style="width:180px;padding:6px 10px;font-size:12px;">
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:3px;">Limit</label>
+          <input class="form-input" name="limit" type="number" min="1" max="500" value="{{ selected_filters.limit }}" style="width:80px;padding:6px 10px;font-size:12px;">
+        </div>
+        <button class="btn-primary" type="submit" style="padding:7px 16px;font-size:12px;">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Chain integrity notice -->
+<div style="display:flex;align-items:center;gap:8px;padding:9px 14px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;margin-bottom:14px;font-size:12px;color:var(--c-s4);">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--c-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  <span>Events include a <strong style="color:var(--c-green);">SHA-256 hash chain</strong> — each event hashes the previous, making tampering detectable. Expand any row to inspect hashes.</span>
+</div>
+
+<!-- Events Table -->
+<div class="s-card">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Audit Events</div>
+      <div class="s-card-sub">{{ audit_events|length }} event{{ 's' if audit_events|length != 1 }} — click any row to see full metadata</div>
+    </div>
+    <input class="form-filter" type="text" placeholder="Quick search…" data-filter-input data-filter-target="#audit-tbody tr.audit-row">
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th style="width:26px;"></th>
+          <th>Time</th>
+          <th>Event Type</th>
+          <th>Outcome</th>
+          <th>Actor</th>
+          <th>Target</th>
+          <th>Source IP</th>
+          <th>Reason</th>
+          <th style="width:28px;" title="Hash chain integrity">⛓</th>
+        </tr>
+      </thead>
+      <tbody id="audit-tbody">
+        {% for event in audit_events %}
+        <tr class="audit-row" style="cursor:pointer;" onclick="_expandRow('ae-{{ event.id }}')">
+          <td>
+            <span data-expand-icon="ae-{{ event.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span>
+          </td>
+          <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);white-space:nowrap;">
+            {{ event.created_at[:16].replace('T',' ') if event.created_at is string else event.created_at.strftime('%Y-%m-%d %H:%M') }}
+          </td>
+          <td style="font-size:12px;">
+            {%- set parts = event.event_type.split('.') -%}
+            {% if parts|length > 1 %}
+            <span style="color:var(--c-s4);font-size:11px;">{{ parts[0] }}.</span><span style="font-weight:500;color:#e8eaed;">{{ parts[1:] | join('.') }}</span>
+            {% else %}
+            <span style="font-weight:500;color:#e8eaed;">{{ event.event_type }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if event.outcome in ('success','allowed','allow') %}<span class="sbadge sbadge-green">{{ event.outcome }}</span>
+            {% elif event.outcome in ('denied','deny','failure','error') %}<span class="sbadge sbadge-red">{{ event.outcome }}</span>
+            {% elif event.outcome == 'warning' %}<span class="sbadge sbadge-amber">{{ event.outcome }}</span>
+            {% else %}<span class="sbadge sbadge-muted">{{ event.outcome }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--c-s4);">
+            {% if event.actor_user_id %}
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;" title="{{ event.actor_user_id }}">usr:{{ event.actor_user_id|string|truncate(8,True,'') }}</span>
+            {% else %}<span style="color:var(--c-s3);">system</span>{% endif %}
+          </td>
+          <td style="font-size:12px;">
+            {% if event.target_type %}<span class="tag" style="font-size:10px;">{{ event.target_type }}</span>{% else %}<span style="color:var(--c-s3);">—</span>{% endif %}
+          </td>
+          <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ event.source_ip or '—' }}</td>
+          <td style="font-size:12px;color:var(--c-s4);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ event.reason }}">{{ event.reason or '—' }}</td>
+          <td style="text-align:center;">
+            {% if event.event_hash %}
+            <span title="Hash present — chain intact" style="color:var(--c-green);font-size:13px;">●</span>
+            {% else %}
+            <span title="No hash" style="color:var(--c-s3);font-size:13px;">○</span>
+            {% endif %}
+          </td>
+        </tr>
+
+        <!-- Expand Row -->
+        <tr id="expand-ae-{{ event.id }}" style="display:none;">
+          <td colspan="9" style="padding:0;background:var(--c-bg);border-bottom:2px solid var(--c-s2);">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid var(--c-s2);">
+
+              <!-- Col 1: Actor + Target -->
+              <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Actor &amp; Target</div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">Actor User</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#e8eaed;">{{ event.actor_user_id or '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">Actor Device</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#c8d3e6;">{{ event.actor_device_id or '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">Target Type</span>
+                    <span>{% if event.target_type %}<span class="tag">{{ event.target_type }}</span>{% else %}—{% endif %}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">Target ID</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#c8d3e6;">{{ event.target_id or '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">Source IP</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#c8d3e6;">{{ event.source_ip or '—' }}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--c-s4);">User Agent</span>
+                    <span style="font-size:11px;color:var(--c-s4);max-width:200px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ event.user_agent }}">{{ event.user_agent or '—' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Col 2: Metadata -->
+              <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Event Metadata</div>
+                {% if event.metadata %}
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  {% for k, v in event.metadata.items() %}
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:11px;padding:4px 7px;background:var(--c-s1);border-radius:5px;border:1px solid var(--c-s2);">
+                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;flex-shrink:0;margin-right:8px;">{{ k }}</span>
+                    <span style="color:#c8d3e6;text-align:right;word-break:break-all;">{{ v }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div style="font-size:12px;color:var(--c-s3);">No metadata attached to this event.</div>
+                {% endif %}
+              </div>
+
+              <!-- Col 3: Hash chain -->
+              <div style="padding:14px 18px;">
+                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Hash Chain</div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                  <div style="font-size:11px;color:var(--c-s4);margin-bottom:4px;">The event hash is computed over the event payload. Each event includes the previous event's hash, forming a tamper-evident chain.</div>
+                  <div style="padding:5px 8px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:5px;">
+                    <div style="font-size:10px;color:var(--c-s4);margin-bottom:2px;">Event Hash (SHA-256)</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:{% if event.event_hash %}var(--c-green){% else %}var(--c-s3){% endif %};word-break:break-all;">{{ event.event_hash or '(not recorded)' }}</div>
+                  </div>
+                  <div style="padding:5px 8px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:5px;">
+                    <div style="font-size:10px;color:var(--c-s4);margin-bottom:2px;">Previous Hash</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c-s4);word-break:break-all;">{{ event.previous_hash or '(chain head)' }}</div>
+                  </div>
+                  <div>
+                    <span style="font-size:11px;color:var(--c-s4);">Event ID: </span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c8d3e6;">{{ event.id }}</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="dt-empty">No audit events match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function _expandRow(id) {
+  const row  = document.getElementById('expand-' + id);
+  const icon = document.querySelector('[data-expand-icon="' + id + '"]');
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+}
+</script>
+{% endblock %}

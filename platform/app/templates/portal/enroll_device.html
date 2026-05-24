@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block title %}Enroll Device{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Enroll a New Device</h1>
+    <div class="page-sub">Register your device to use Keyward SSH access</div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Step 1 -->
+  <div class="col-md-4">
+    <div class="s-card" style="height:100%;">
+      <div class="s-card-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--c-blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+          <div class="s-card-title">Configure the Agent</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;font-size:13px;color:var(--c-s4);line-height:1.6;">
+        <p style="margin-bottom:12px;">Install the Keyward agent and point it to this platform. Add this URL to your agent configuration:</p>
+        <div class="code-block">https://{{ request.host }}/</div>
+        <p style="margin-top:12px;">Download the agent from the releases page or via your IT administrator.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="col-md-4">
+    <div class="s-card" style="height:100%;">
+      <div class="s-card-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--c-blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+          <div class="s-card-title">Enroll from Your Device</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;font-size:13px;color:var(--c-s4);line-height:1.6;">
+        <p style="margin-bottom:12px;">Run the enrollment command on the device you want to enroll. Sign in with your account:</p>
+        <div class="code-block">keyward-agent enroll</div>
+        <p style="margin-top:12px;">
+          <strong style="color:#e8eaed;">macOS / Windows:</strong> Use the system tray icon → <em>Enroll Device</em>.<br>
+          <strong style="color:#e8eaed;">Linux:</strong> Run the command above in a terminal.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="col-md-4">
+    <div class="s-card" style="height:100%;">
+      <div class="s-card-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--c-blue);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+          <div class="s-card-title">Approve in Browser</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;font-size:13px;color:var(--c-s4);line-height:1.6;">
+        <p style="margin-bottom:12px;">After running the enrollment command, you'll receive a short code. Enter it here to approve your device.</p>
+        <a class="btn-primary" href="{{ url_for('portal.approve_device') }}" style="display:inline-flex;margin-top:4px;">Enter Approval Code →</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

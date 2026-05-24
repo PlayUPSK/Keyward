@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}Approve Device{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Approve Device Enrollment</h1>
+    <p class="page-sub">Verify the enrollment code shown in the terminal on your device.</p>
+  </div>
+</div>
+
+<div style="max-width:520px;">
+{% if enrollment %}
+  <div class="s-card">
+    <div class="s-card-head"><div class="s-card-title">Device Verification</div></div>
+    <div style="padding:0 20px 20px;">
+      <div style="display:grid;grid-template-columns:max-content 1fr;gap:10px 20px;align-items:baseline;margin-bottom:20px;">
+        <span class="cell-s">Code</span>
+        <span class="code-block" style="display:inline-block;font-size:18px;letter-spacing:.1em;padding:6px 14px;">{{ enrollment.user_code }}</span>
+        <span class="cell-s">Device</span>
+        <span style="font-size:13px;font-weight:600;color:var(--c-text);">{{ enrollment.device_name }}</span>
+        <span class="cell-s">Platform</span>
+        <span style="font-size:13px;color:var(--c-text-2);">{{ enrollment.platform }}</span>
+        <span class="cell-s">Expires</span>
+        <span style="font-size:13px;color:var(--c-text-2);">{{ enrollment.expires_at }}</span>
+      </div>
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:12px;color:var(--c-amber);">
+        <strong>Verify this code matches your terminal output</strong> before approving.
+      </div>
+      <form method="post">
+        <input type="hidden" name="code" value="{{ enrollment.user_code }}">
+        <button class="btn btn-primary btn-sm" type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Approve This Device
+        </button>
+      </form>
+    </div>
+  </div>
+{% else %}
+  <div class="s-card">
+    <div class="s-card-head"><div class="s-card-title">Enter Enrollment Code</div></div>
+    <div style="padding:0 20px 20px;">
+      <p class="cell-s" style="margin-bottom:16px;">Run <code style="background:var(--c-s3);border-radius:4px;padding:1px 5px;font-size:11px;">keyward-agent enroll</code> on your device, then enter the one-time code shown in the terminal below.</p>
+      <form method="get">
+        <div class="form-group">
+          <label class="form-label">Enrollment Code</label>
+          <input class="form-input" style="font-family:'JetBrains Mono',monospace;letter-spacing:.1em;font-size:16px;" name="code" value="{{ code }}" autofocus placeholder="XXXXXX">
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">Look Up Request</button>
+      </form>
+    </div>
+  </div>
+{% endif %}
+</div>
+{% endblock %}

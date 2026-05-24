@@ -1,0 +1,493 @@
+{% extends "admin/base.html" %}
+{% block title %}Servers{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Server Inventory</h1>
+    <div class="page-sub">Manage enrolled SSH servers, environments, and groupings</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn-primary" onclick="_openModal('createEnrollmentTokenModal')">
+      New Enrollment Token
+    </button>
+    <button class="btn-ghost" onclick="_openModal('createGroupModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      New Group
+    </button>
+  </div>
+</div>
+
+<div class="s-card" style="margin-bottom:20px;">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Server Enrollment Tokens</div>
+      <div class="s-card-sub">Admin-issued join secrets with hostname patterns, expiry, use count, and source IP restrictions</div>
+    </div>
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th>Hostname Pattern</th>
+          <th>Status</th>
+          <th>Environment</th>
+          <th>Uses</th>
+          <th>Allowed CIDRs</th>
+          <th>Expires</th>
+          <th>Note</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for token in enrollment_tokens %}
+        {% set meta = token.token_metadata or {} %}
+        <tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#e8eaed;">{{ token.hostname }}</td>
+          <td>
+            {% if token.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>
+            {% elif token.status == 'redeemed' %}<span class="sbadge sbadge-green">Redeemed</span>
+            {% elif token.status == 'expired' %}<span class="sbadge sbadge-muted">Expired</span>
+            {% else %}<span class="sbadge">{{ token.status }}</span>{% endif %}
+          </td>
+          <td><span class="tag">{{ meta.get('environment', 'lab') }}</span></td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ meta.get('redeemed_count', 0) }} / {{ meta.get('max_uses', 1) }}</td>
+          <td>
+            {% if meta.get('allowed_cidrs') %}
+              {% for cidr in meta.get('allowed_cidrs') %}<span class="tag" style="font-family:'JetBrains Mono',monospace;font-size:10px;margin:1px;">{{ cidr }}</span>{% endfor %}
+            {% else %}
+              <span style="font-size:12px;color:var(--c-s3);">Any source</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ token.expires_at.strftime('%Y-%m-%d %H:%M') if token.expires_at else '—' }}</td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ meta.get('note') or '—' }}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              {% if token.status == 'pending' %}
+              <button class="btn-ghost" style="font-size:11px;padding:3px 9px;" onclick="_openModal('editEnrollmentTokenModal-{{ token.id }}')">Edit</button>
+              {% endif %}
+              <form method="POST" action="{{ url_for('admin.servers_enrollment_tokens_delete', token_id=token.id) }}" onsubmit="return confirm('Delete this enrollment token?')">
+                <button class="btn-danger" type="submit" style="font-size:11px;padding:3px 9px;">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="dt-empty">No enrollment tokens created yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for token in enrollment_tokens %}
+{% set meta = token.token_metadata or {} %}
+{% if token.status == 'pending' %}
+<div class="modal-overlay" id="editEnrollmentTokenModal-{{ token.id }}" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">Edit Server Enrollment Token</div>
+      <button class="modal-close" onclick="document.getElementById('editEnrollmentTokenModal-{{ token.id }}').style.display='none'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.servers_enrollment_tokens_edit', token_id=token.id) }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Hostname Pattern <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="hostname" required value="{{ meta.get('hostname_pattern') or token.hostname }}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Environment</label>
+            <input class="form-input" name="environment" value="{{ meta.get('environment', 'lab') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Uses</label>
+            <input class="form-input" type="number" name="max_uses" min="{{ meta.get('redeemed_count', 0) or 1 }}" max="100" value="{{ meta.get('max_uses', 1) }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allowed Source CIDRs</label>
+          <textarea class="form-input" name="allowed_cidrs" rows="3">{{ (meta.get('allowed_cidrs') or [])|join('\n') }}</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Admin Note</label>
+          <input class="form-input" name="note" value="{{ meta.get('note') or '' }}">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('editEnrollmentTokenModal-{{ token.id }}').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Tab nav -->
+<div style="display:flex;gap:0;border-bottom:1px solid var(--c-s2);margin-bottom:20px;">
+  <button class="tab-btn tab-active" onclick="_tab('by-group')" id="tab-btn-by-group">By Group</button>
+  <button class="tab-btn" onclick="_tab('all')" id="tab-btn-all">All Servers</button>
+</div>
+
+<!-- ── BY-GROUP VIEW ──────────────────────────────────────────── -->
+<div id="tab-by-group">
+  {% set grouped_ids = [] %}
+  {% for group in server_groups %}
+    {% for sid in group.server_ids %}{% set _ = grouped_ids.append(sid) %}{% endfor %}
+  {% endfor %}
+
+  {% for group in server_groups %}
+  {% set group_servers = servers|selectattr('id','in',group.server_ids)|list %}
+  <div style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="_toggleFolder('grp-{{ group.id }}')">
+        <svg id="grp-icon-{{ loop.index }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--c-s3);transition:transform .2s;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        <span style="font-size:13px;font-weight:600;color:#e8eaed;">{{ group.name }}</span>
+        {% if group.description %}<span style="font-size:12px;color:var(--c-s4);">— {{ group.description }}</span>{% endif %}
+        <span style="font-size:11px;color:var(--c-s3);">{{ group.server_ids|length }} server{{ 's' if group.server_ids|length != 1 }}</span>
+      </div>
+    </div>
+
+    <div id="grp-{{ group.id }}" class="s-card">
+      {% if group_servers %}
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th style="width:26px;"></th>
+              <th>Hostname</th>
+              <th>Environment</th>
+              <th>Status</th>
+              <th>Agent</th>
+              <th>Last Seen</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for server in group_servers %}
+            {{ _server_row(server) }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="dt-empty" style="padding:20px;">No servers in this group yet.</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Ungrouped servers -->
+  {% set ungrouped = servers|rejectattr('id','in',grouped_ids)|list %}
+  {% if ungrouped %}
+  <div style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;" onclick="_toggleFolder('grp-ungrouped')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--c-s3);"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+      <span style="font-size:13px;font-weight:600;color:var(--c-s4);">Ungrouped</span>
+      <span style="font-size:11px;color:var(--c-s3);">{{ ungrouped|length }} server{{ 's' if ungrouped|length != 1 }}</span>
+    </div>
+    <div id="grp-ungrouped" class="s-card">
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th style="width:26px;"></th>
+              <th>Hostname</th>
+              <th>Environment</th>
+              <th>Status</th>
+              <th>Agent</th>
+              <th>Last Seen</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for server in ungrouped %}
+            {% include "_server_row_fragment" ignore missing %}
+            <tr class="server-row" style="cursor:pointer;" onclick="_expandRow('s-{{ server.id }}')">
+              <td><span data-expand-icon="s-{{ server.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span></td>
+              <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:#e8eaed;">{{ server.hostname }}</span></td>
+              <td>{% if server.environment %}<span class="tag">{{ server.environment }}</span>{% else %}<span style="color:var(--c-s3);">—</span>{% endif %}</td>
+              <td>{% if server.status == 'enrolled' %}<span class="sbadge sbadge-green">Enrolled</span>{% elif server.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>{% elif server.status == 'decommissioned' %}<span class="sbadge sbadge-muted">Decommissioned</span>{% else %}<span class="sbadge">{{ server.status }}</span>{% endif %}</td>
+              <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ server.agent_version or '—' }}</td>
+              <td style="font-size:12px;color:var(--c-s4);">{{ server.last_seen_at.strftime('%Y-%m-%d %H:%M') if server.last_seen_at else '—' }}</td>
+              <td onclick="event.stopPropagation()">
+                <form method="POST" action="{{ url_for('admin.servers_status', server_id=server.id) }}" style="display:flex;gap:6px;align-items:center;">
+                  <select class="form-select-input" name="status" style="font-size:11px;padding:3px 8px;width:auto;">
+                    <option value="enrolled" {% if server.status == 'enrolled' %}selected{% endif %}>enrolled</option>
+                    <option value="pending" {% if server.status == 'pending' %}selected{% endif %}>pending</option>
+                    <option value="decommissioned" {% if server.status == 'decommissioned' %}selected{% endif %}>decommissioned</option>
+                  </select>
+                  <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 8px;">Set</button>
+                </form>
+              </td>
+            </tr>
+            <tr id="expand-s-{{ server.id }}" style="display:none;">
+              <td colspan="7" style="padding:0;background:var(--c-bg);border-bottom:2px solid var(--c-s2);">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--c-s2);">
+                  <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Server Details</div>
+                    <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                      <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">ID</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;">{{ server.id }}</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Agent Version</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#c8d3e6;">{{ server.agent_version or '—' }}</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Enrolled</span><span style="color:var(--c-s4);">{{ server.created_at.strftime('%Y-%m-%d') if server.created_at else '—' }}</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Last Seen</span><span style="color:var(--c-s4);">{{ server.last_seen_at.strftime('%Y-%m-%d %H:%M') if server.last_seen_at else 'Never' }}</span></div>
+                      {% if server.public_key %}
+                      <div style="margin-top:4px;">
+                        <div style="font-size:11px;color:var(--c-s4);margin-bottom:3px;">Public Key (truncated)</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c-s3);word-break:break-all;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:5px;padding:6px 8px;">{{ server.public_key[:64] }}…</div>
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div style="padding:14px 18px;">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Tags &amp; Groups</div>
+                    {% if server.tags %}
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+                      {% for k, v in server.tags.items() %}
+                      <span class="tag" style="font-size:11px;font-family:'JetBrains Mono',monospace;">{{ k }}=<span style="color:#e8eaed;">{{ v }}</span></span>
+                      {% endfor %}
+                    </div>
+                    {% else %}
+                    <div style="font-size:12px;color:var(--c-s3);margin-bottom:10px;">No tags set</div>
+                    {% endif %}
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:6px;">Add to Group</div>
+                    <form method="POST" action="{{ url_for('admin.server_groups_create') }}" style="display:flex;gap:6px;" onsubmit="return false;">
+                      <select class="form-select-input" id="addToGroup-{{ server.id }}" style="font-size:11px;padding:3px 8px;flex:1;">
+                        {% for g in server_groups if server.id not in g.server_ids %}
+                        <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                      </select>
+                      <button class="btn-ghost" type="button" style="font-size:11px;padding:3px 8px;" onclick="_addToGroup('{{ server.id }}')">Add</button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not servers %}
+  <div class="s-card">
+    <div class="dt-empty" style="padding:48px 20px;">
+      <div>No servers enrolled yet.</div>
+      <div style="font-size:12px;color:var(--c-s3);margin-top:6px;">Run the <code style="font-size:11px;background:var(--c-s2);padding:1px 5px;border-radius:3px;">keyward-server-agent enroll</code> command on a server to register it.</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── ALL SERVERS TABLE ──────────────────────────────────────── -->
+<div id="tab-all" style="display:none;">
+  <div class="s-card">
+    <div class="s-card-head">
+      <div><div class="s-card-title">All Servers</div><div class="s-card-sub">{{ servers|length }} server{{ 's' if servers|length != 1 }}</div></div>
+      <input class="form-filter" type="text" placeholder="Filter…" data-filter-input data-filter-target="#all-servers-tbody tr.server-row-flat">
+    </div>
+    <div class="dt-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th style="width:26px;"></th>
+            <th>Hostname</th>
+            <th>Environment</th>
+            <th>Groups</th>
+            <th>Status</th>
+            <th>Agent</th>
+            <th>Tags</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="all-servers-tbody">
+          {% for server in servers %}
+          <tr class="server-row-flat" style="cursor:pointer;" onclick="_expandRow('sf-{{ server.id }}')">
+            <td><span data-expand-icon="sf-{{ server.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span></td>
+            <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:#e8eaed;">{{ server.hostname }}</span></td>
+            <td>{% if server.environment %}<span class="tag">{{ server.environment }}</span>{% else %}<span style="color:var(--c-s3);">—</span>{% endif %}</td>
+            <td>
+              {% set srv_groups = server_groups|selectattr('server_ids','containing',server.id)|list %}
+              {% for g in srv_groups %}<span class="tag" style="margin:1px;font-size:11px;">{{ g.name }}</span>{% endfor %}
+              {% if not srv_groups %}<span style="color:var(--c-s3);font-size:12px;">—</span>{% endif %}
+            </td>
+            <td>{% if server.status == 'enrolled' %}<span class="sbadge sbadge-green">Enrolled</span>{% elif server.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>{% elif server.status == 'decommissioned' %}<span class="sbadge sbadge-muted">Decommissioned</span>{% else %}<span class="sbadge">{{ server.status }}</span>{% endif %}</td>
+            <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ server.agent_version or '—' }}</td>
+            <td>
+              {% if server.tags %}
+                {% for k, v in server.tags.items() %}<span class="tag" style="font-size:10px;margin:1px;font-family:'JetBrains Mono',monospace;">{{ k }}={{ v }}</span>{% endfor %}
+              {% else %}<span style="color:var(--c-s3);font-size:12px;">—</span>{% endif %}
+            </td>
+            <td style="font-size:12px;color:var(--c-s4);">{{ server.last_seen_at.strftime('%Y-%m-%d %H:%M') if server.last_seen_at else '—' }}</td>
+            <td onclick="event.stopPropagation()">
+              <form method="POST" action="{{ url_for('admin.servers_status', server_id=server.id) }}" style="display:flex;gap:4px;align-items:center;">
+                <select class="form-select-input" name="status" style="font-size:11px;padding:3px 8px;width:auto;">
+                  <option value="enrolled" {% if server.status == 'enrolled' %}selected{% endif %}>enrolled</option>
+                  <option value="pending" {% if server.status == 'pending' %}selected{% endif %}>pending</option>
+                  <option value="decommissioned" {% if server.status == 'decommissioned' %}selected{% endif %}>decommissioned</option>
+                </select>
+                <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 8px;">Set</button>
+              </form>
+            </td>
+          </tr>
+          <tr id="expand-sf-{{ server.id }}" style="display:none;">
+            <td colspan="9" style="padding:0;background:var(--c-bg);border-bottom:2px solid var(--c-s2);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid var(--c-s2);">
+                <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Identity</div>
+                  <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Full ID</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;">{{ server.id }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Environment</span><span class="tag">{{ server.environment or '—' }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Agent Version</span><span style="font-family:'JetBrains Mono',monospace;color:#c8d3e6;font-size:11px;">{{ server.agent_version or '—' }}</span></div>
+                    <div style="display:flex;justify-content:space-between;"><span style="color:var(--c-s4);">Enrolled</span><span style="color:var(--c-s4);">{{ server.created_at.strftime('%Y-%m-%d') if server.created_at else '—' }}</span></div>
+                  </div>
+                </div>
+                <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Tags</div>
+                  {% if server.tags %}
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                    {% for k, v in server.tags.items() %}
+                    <span class="tag" style="font-size:11px;font-family:'JetBrains Mono',monospace;">{{ k }}=<span style="color:#e8eaed;">{{ v }}</span></span>
+                    {% endfor %}
+                  </div>
+                  {% else %}
+                  <div style="font-size:12px;color:var(--c-s3);">No tags. Tags are set by the server agent during enrollment and used in policy conditions.</div>
+                  {% endif %}
+                </div>
+                <div style="padding:14px 18px;">
+                  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Public Key</div>
+                  {% if server.public_key %}
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c-s4);word-break:break-all;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:5px;padding:8px;">{{ server.public_key[:120] }}…</div>
+                  {% else %}
+                  <div style="font-size:12px;color:var(--c-s3);">Not yet enrolled (no public key).</div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="dt-empty">No servers registered.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── CREATE ENROLLMENT TOKEN MODAL ──────────────────────────── -->
+<div class="modal-overlay" id="createEnrollmentTokenModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-head">
+      <div class="modal-title">Create Server Enrollment Token</div>
+      <button class="modal-close" onclick="document.getElementById('createEnrollmentTokenModal').style.display='none'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.servers_enrollment_tokens_create') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Hostname Pattern <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="hostname" required placeholder="prod-web-*">
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Use an exact hostname for one server or a wildcard such as prod-web-* for cloned templates.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Environment</label>
+            <input class="form-input" name="environment" value="lab">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Max Uses</label>
+            <input class="form-input" type="number" name="max_uses" min="1" max="100" value="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">TTL Minutes</label>
+            <input class="form-input" type="number" name="ttl_minutes" min="1" value="15">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allowed Source CIDRs</label>
+          <textarea class="form-input" name="allowed_cidrs" rows="3" placeholder="203.0.113.10/32&#10;10.0.0.0/24"></textarea>
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Leave empty only for lab use. Use /32 for a single public IP.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Admin Note</label>
+          <input class="form-input" name="note" placeholder="Change ticket, requester, rollout batch">
+        </div>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--c-amber);line-height:1.5;">
+          Treat enrollment tokens like secrets. Anyone with a valid token from an allowed source can enroll a matching hostname until expiry or use limit.
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('createEnrollmentTokenModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Create Token</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── CREATE GROUP MODAL ─────────────────────────────────────── -->
+<div class="modal-overlay" id="createGroupModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Create Server Group</div>
+      <button class="modal-close" onclick="document.getElementById('createGroupModal').style.display='none'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.server_groups_create') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Group Name <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="name" required placeholder="e.g. prod-eu-west">
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Use in Access Grants to give users access to all servers in this group at once.</div>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Description</label>
+          <input class="form-input" name="description" placeholder="Optional description">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('createGroupModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Create Group</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--c-s4); cursor:pointer; font-size:13px; font-weight:500; font-family:inherit; padding:8px 16px; margin-bottom:-1px; transition:color .15s, border-color .15s; }
+  .tab-btn:hover { color:#e8eaed; }
+  .tab-active { color:var(--c-blue) !important; border-bottom-color:var(--c-blue) !important; }
+</style>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function _tab(name) {
+  ['by-group','all'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+    document.getElementById('tab-btn-' + t).classList.toggle('tab-active', t === name);
+  });
+}
+function _openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function _expandRow(id) {
+  const row = document.getElementById('expand-' + id);
+  const icon = document.querySelector('[data-expand-icon="' + id + '"]');
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+}
+function _toggleFolder(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+function _addToGroup(serverId) {
+  const sel = document.getElementById('addToGroup-' + serverId);
+  if (!sel || !sel.value) return;
+  // POST to add server to group — currently only create_group route exists; 
+  // this would need a backend route. Show a note for now.
+  alert('Use the Access Grants page to scope a grant to a server group, or contact a developer to add a server-to-group assignment route.');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,687 @@
+{% extends "admin/base.html" %}
+{% block title %}Policies & Grants{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Policies &amp; Access Grants</h1>
+    <div class="page-sub">Define who can access what, under which conditions</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn-ghost" onclick="_tab('grants')" id="top-grants-btn">Access Grants</button>
+    <button class="btn-ghost" onclick="_tab('posture')" id="top-posture-btn">Device Posture</button>
+    <button class="btn-primary" onclick="_openModal('createPolicyModal')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Policy
+    </button>
+  </div>
+</div>
+
+<!-- Concept banner -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+  <div style="padding:12px 14px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:9px;">
+    <div style="font-size:12px;font-weight:600;color:#e8eaed;margin-bottom:3px;">1 · Policies</div>
+    <div style="font-size:11px;color:var(--c-s4);line-height:1.5;">Rules evaluated at SSH cert request time. Allow/Deny with conditions (device status, environment, IP). Lower priority number = evaluated first.</div>
+  </div>
+  <div style="padding:12px 14px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:9px;">
+    <div style="font-size:12px;font-weight:600;color:#e8eaed;margin-bottom:3px;">2 · Access Grants</div>
+    <div style="font-size:11px;color:var(--c-s4);line-height:1.5;">Entitlements that give a user or group access to a server scope as specific Unix principals (e.g. <code style="font-size:10px;background:var(--c-s2);padding:1px 4px;border-radius:3px;">ubuntu</code>, <code style="font-size:10px;background:var(--c-s2);padding:1px 4px;border-radius:3px;">root</code>). Grants are enforced by policies.</div>
+  </div>
+  <div style="padding:12px 14px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:9px;">
+    <div style="font-size:12px;font-weight:600;color:#e8eaed;margin-bottom:3px;">How they interact</div>
+    <div style="font-size:11px;color:var(--c-s4);line-height:1.5;">At cert request time: user must have an Access Grant for the target server <em>and</em> an enabled Allow policy must match. A matching Deny policy overrides any allow.</div>
+  </div>
+</div>
+
+<!-- Tab nav -->
+<div style="display:flex;gap:0;border-bottom:1px solid var(--c-s2);margin-bottom:20px;">
+  <button class="tab-btn tab-active" onclick="_tab('policies')" id="tab-btn-policies">
+    Policies <span style="margin-left:4px;font-size:10px;background:var(--c-s2);color:var(--c-s4);border-radius:10px;padding:1px 6px;">{{ policies|length }}</span>
+  </button>
+  <button class="tab-btn" onclick="_tab('grants')" id="tab-btn-grants">
+    Access Grants <span style="margin-left:4px;font-size:10px;background:var(--c-s2);color:var(--c-s4);border-radius:10px;padding:1px 6px;">{{ access_grants|length }}</span>
+  </button>
+  <button class="tab-btn" onclick="_tab('posture')" id="tab-btn-posture">
+    Device Posture
+    {% if device_posture_policy.mode == 'enforce' %}<span style="margin-left:4px;font-size:10px;background:rgba(34,197,94,.14);color:var(--c-green);border-radius:10px;padding:1px 6px;">enforce</span>
+    {% else %}<span style="margin-left:4px;font-size:10px;background:var(--c-s2);color:var(--c-s4);border-radius:10px;padding:1px 6px;">monitor</span>{% endif %}
+  </button>
+</div>
+
+<!-- ── POLICIES TAB ───────────────────────────────────────────── -->
+<div id="tab-policies">
+  {% set ns = namespace(cur_folder='__none__') %}
+  {% set folders = [] %}
+  {% for p in policies %}
+    {% set folder = p.name.split('/')[0] if '/' in p.name else 'General' %}
+    {% if folder not in folders %}{% set _ = folders.append(folder) %}{% endif %}
+  {% endfor %}
+
+  {% if not policies %}
+  <div class="s-card">
+    <div class="dt-empty" style="padding:48px 20px;">
+      <div style="margin-bottom:8px;">No policies created yet.</div>
+      <div style="font-size:12px;color:var(--c-s3);margin-bottom:16px;">Create your first policy to start controlling SSH access.</div>
+      <button class="btn-primary" onclick="_openModal('createPolicyModal')">Create Policy</button>
+    </div>
+  </div>
+  {% else %}
+  {% for folder in folders %}
+  {% set folder_policies = [] %}
+  {% for p in policies %}
+    {% if ('/' in p.name and p.name.split('/')[0] == folder) or ('/' not in p.name and folder == 'General') %}
+      {% set _ = folder_policies.append(p) %}
+    {% endif %}
+  {% endfor %}
+
+  <div style="margin-bottom:16px;">
+    <!-- Folder header -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;" onclick="_toggleFolder('folder-{{ loop.index }}')">
+      <svg id="folder-icon-{{ loop.index }}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;color:var(--c-s3);transition:transform .2s;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span style="font-size:12px;font-weight:600;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;">{{ folder }}</span>
+      <span style="font-size:11px;color:var(--c-s3);">{{ folder_policies|length }} polic{{ 'y' if folder_policies|length == 1 else 'ies' }}</span>
+    </div>
+
+    <div id="folder-{{ loop.index }}" class="s-card">
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th style="width:26px;"></th>
+              <th>Policy</th>
+              <th>Priority</th>
+              <th>Effect</th>
+              <th>Conditions</th>
+              <th>Cert TTL</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for policy in folder_policies %}
+            <tr class="policy-row" style="cursor:pointer;{% if policy.invalidated %}opacity:.55;{% endif %}" onclick="_expandRow('p-{{ policy.id }}')">
+              <td>
+                <span data-expand-icon="p-{{ policy.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span>
+              </td>
+              <td>
+                <div style="font-weight:500;color:#e8eaed;">
+                  {% if '/' in policy.name %}<span style="color:var(--c-s3);font-size:11px;">{{ policy.name.split('/')[0] }}/</span>{{ policy.name.split('/',1)[1] }}{% else %}{{ policy.name }}{% endif %}
+                </div>
+                {% if policy.invalidated %}
+                <span class="sbadge sbadge-red" style="font-size:10px;margin-top:2px;">invalidated</span>
+                {% endif %}
+              </td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--c-s4);">{{ policy.priority }}</td>
+              <td>
+                {% if policy.effect == 'allow' %}<span class="sbadge sbadge-green">Allow</span>
+                {% else %}<span class="sbadge sbadge-red">Deny</span>{% endif %}
+              </td>
+              <td>
+                <!-- Condition chips -->
+                <div style="display:flex;flex-wrap:wrap;gap:3px;">
+                  {% if policy.conditions.get('device_status') %}<span class="tag" style="font-size:10px;">device:{{ policy.conditions.device_status }}</span>{% endif %}
+                  {% if policy.conditions.get('server_environment') %}<span class="tag" style="font-size:10px;">env:{{ policy.conditions.server_environment }}</span>{% endif %}
+                  {% if policy.conditions.get('ssh_principal') %}<span class="tag" style="font-size:10px;">principal:{{ policy.conditions.ssh_principal }}</span>{% endif %}
+                  {% if policy.conditions.get('source_ip') %}<span class="tag" style="font-size:10px;">ip:{{ policy.conditions.source_ip }}</span>{% endif %}
+                  {% if policy.conditions.get('user_id') %}<span class="tag" style="font-size:10px;background:rgba(59,130,246,.1);color:var(--c-blue);">user</span>{% endif %}
+                  {% if policy.conditions.get('group_id') %}<span class="tag" style="font-size:10px;background:rgba(168,85,247,.1);color:var(--c-purple);">group</span>{% endif %}
+                  {% if policy.conditions.get('server_tags') %}<span class="tag" style="font-size:10px;">tags</span>{% endif %}
+                  {% if not policy.conditions %}<span style="font-size:11px;color:var(--c-s3);">Any request</span>{% endif %}
+                </div>
+              </td>
+              <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">
+                {% if policy.effect == 'allow' %}{{ (policy.actions.get('ttl_seconds', 300) // 60)|int }}m{% else %}—{% endif %}
+              </td>
+              <td>
+                {% if policy.invalidated %}<span class="sbadge sbadge-red">Invalidated</span>
+                {% elif policy.enabled %}<span class="sbadge sbadge-green">Active</span>
+                {% else %}<span class="sbadge sbadge-muted">Disabled</span>{% endif %}
+              </td>
+              <td onclick="event.stopPropagation()">
+                <div style="display:flex;gap:4px;">
+                  {% if not policy.invalidated %}
+                  <form method="POST" action="{{ url_for('admin.policies_toggle', policy_id=policy.id) }}">
+                    <input type="hidden" name="enabled" value="{{ '0' if policy.enabled else '1' }}">
+                    <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 8px;">{{ 'Disable' if policy.enabled else 'Enable' }}</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.policies_invalidate', policy_id=policy.id) }}" onsubmit="return confirm('Invalidate policy {{ policy.name }}? This cannot be undone.')">
+                    <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 8px;color:var(--c-amber);border-color:rgba(245,158,11,.3);">Invalidate</button>
+                  </form>
+                  {% endif %}
+                  <form method="POST" action="{{ url_for('admin.policies_delete', policy_id=policy.id) }}" onsubmit="return confirm('Delete policy {{ policy.name }}?')">
+                    <button class="btn-danger" type="submit" style="font-size:11px;padding:3px 8px;">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Expand: full policy detail -->
+            <tr id="expand-p-{{ policy.id }}" style="display:none;">
+              <td colspan="8" style="padding:0;background:var(--c-bg);border-bottom:2px solid var(--c-s2);">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-top:1px solid var(--c-s2);">
+
+                  <!-- Col 1: Conditions explained -->
+                  <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Conditions</div>
+                    {% set cond_meta = [
+                      ('device_status',      'Device Status',      'The requesting device must have this trust status.'),
+                      ('server_environment', 'Server Environment', 'Target server must be tagged with this environment.'),
+                      ('ssh_principal',      'SSH Principal',      'The requested Unix login name (e.g. ubuntu, root).'),
+                      ('source_ip',          'Source IP CIDR',     'Request must originate from this IP range.'),
+                      ('user_id',            'User ID',            'Only applies to the specified user.'),
+                      ('group_id',           'Group ID',           'Only applies to members of the specified group.'),
+                      ('server_tags',        'Server Tags',        'Target server must have matching tags (key=value).')
+                    ] %}
+                    {% set has_cond = false %}
+                    {% for key, label, desc in cond_meta %}
+                      {% if policy.conditions.get(key) %}
+                      {% set has_cond = true %}
+                      <div style="margin-bottom:8px;padding:8px 10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;">
+                          <span style="font-size:11px;font-weight:600;color:#e8eaed;">{{ label }}</span>
+                          <span class="tag" style="font-size:10px;font-family:'JetBrains Mono',monospace;">{{ policy.conditions[key] if policy.conditions[key] is string else policy.conditions[key]|tojson }}</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--c-s3);">{{ desc }}</div>
+                      </div>
+                      {% endif %}
+                    {% endfor %}
+                    {% if not has_cond %}
+                    <div style="font-size:12px;color:var(--c-s4);padding:6px 0;">No conditions — matches <strong style="color:#e8eaed;">all requests</strong>.</div>
+                    {% endif %}
+                  </div>
+
+                  <!-- Col 2: Actions / settings -->
+                  <div style="padding:14px 18px;border-right:1px solid var(--c-s2);">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">
+                      {% if policy.effect == 'allow' %}Certificate Settings{% else %}Deny Settings{% endif %}
+                    </div>
+                    {% if policy.effect == 'allow' %}
+                    {% set actions = policy.actions or {} %}
+                    {% set constraints = actions.get('constraints', {}) %}
+                    <div style="display:flex;flex-direction:column;gap:5px;">
+                      <div style="display:flex;justify-content:space-between;padding:6px 9px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;font-size:12px;">
+                        <div>
+                          <div style="color:#e8eaed;">Cert TTL</div>
+                          <div style="font-size:10px;color:var(--c-s3);">How long the issued SSH certificate is valid</div>
+                        </div>
+                        <span class="tag" style="font-family:'JetBrains Mono',monospace;">{{ actions.get('ttl_seconds', 300) }}s ({{ (actions.get('ttl_seconds', 300) // 60)|int }}m)</span>
+                      </div>
+                      {% for flag_key, flag_label, flag_desc in [
+                        ('permit_pty',              'Permit PTY',              'Allow allocating a pseudo-terminal (interactive shell)'),
+                        ('permit_agent_forwarding', 'Agent Forwarding',        'Allow SSH agent forwarding — inherits local keys'),
+                        ('permit_x11_forwarding',   'X11 Forwarding',          'Allow X11 GUI forwarding over SSH'),
+                        ('require_user_presence',   'Require User Presence',   'Enforce FIDO2/keyward tap at cert issuance')
+                      ] %}
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:6px 9px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;font-size:12px;">
+                        <div>
+                          <div style="color:#e8eaed;">{{ flag_label }}</div>
+                          <div style="font-size:10px;color:var(--c-s3);">{{ flag_desc }}</div>
+                        </div>
+                        {% if constraints.get(flag_key) %}<span class="sbadge sbadge-green" style="font-size:10px;flex-shrink:0;">on</span>
+                        {% else %}<span class="sbadge sbadge-muted" style="font-size:10px;flex-shrink:0;">off</span>{% endif %}
+                      </div>
+                      {% endfor %}
+                    </div>
+                    {% else %}
+                    <div style="padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:6px;font-size:12px;">
+                      <div style="color:var(--c-red);font-weight:600;margin-bottom:3px;">Deny — Access Blocked</div>
+                      <div style="color:var(--c-s4);">Reason returned to client: <span style="color:#c8d3e6;font-family:'JetBrains Mono',monospace;font-size:11px;">{{ policy.actions.get('reason', 'policy_denied') }}</span></div>
+                    </div>
+                    {% endif %}
+                  </div>
+
+                  <!-- Col 3: Meta -->
+                  <div style="padding:14px 18px;">
+                    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Policy Metadata</div>
+                    <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                      <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--c-s4);">ID</span>
+                        <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c8d3e6;">{{ policy.id }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--c-s4);">Priority</span>
+                        <span style="color:#e8eaed;">{{ policy.priority }} <span style="font-size:11px;color:var(--c-s3);">(lower = first)</span></span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--c-s4);">Created</span>
+                        <span style="color:var(--c-s4);">{{ policy.created_at[:10] }}</span>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;">
+                        <span style="color:var(--c-s4);">Updated</span>
+                        <span style="color:var(--c-s4);">{{ policy.updated_at[:10] }}</span>
+                      </div>
+                      {% if policy.invalidated %}
+                      <div style="margin-top:6px;padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:6px;">
+                        <div style="font-size:11px;color:var(--c-red);font-weight:600;">Invalidated</div>
+                        <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ policy.invalidated_at[:16].replace('T',' ') if policy.invalidated_at else '' }}</div>
+                        <div style="font-size:11px;color:var(--c-s4);">{{ policy.invalidated_reason }}</div>
+                      </div>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+<!-- ── DEVICE POSTURE TAB ────────────────────────────────────── -->
+<div id="tab-posture" style="display:none;">
+  <div style="display:grid;grid-template-columns:minmax(360px,1.1fr) minmax(420px,1.4fr);gap:20px;align-items:start;">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Enrollment Posture Policy</div>
+          <div class="s-card-sub">Conditional access for new device enrollment</div>
+        </div>
+        {% if device_posture_policy.mode == 'enforce' %}<span class="sbadge sbadge-green">Enforcing</span>{% else %}<span class="sbadge sbadge-muted">Monitor</span>{% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('admin.policies_device_posture_update') }}" style="padding:0 18px 18px;">
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label">Policy Mode</label>
+          <select class="form-select-input" name="mode">
+            <option value="monitor" {% if device_posture_policy.mode == 'monitor' %}selected{% endif %}>Monitor only</option>
+            <option value="enforce" {% if device_posture_policy.mode == 'enforce' %}selected{% endif %}>Enforce and deny non-compliant enrollment</option>
+          </select>
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Monitor stores posture and audit context without blocking users.</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <input type="checkbox" name="require_domain_join" {% if device_posture_policy.require_domain_join %}checked{% endif %} style="accent-color:var(--c-blue);margin-top:2px;">
+            <span>
+              <span style="display:block;font-size:12px;font-weight:600;color:#e8eaed;">Require domain join</span>
+              <span style="display:block;font-size:10px;color:var(--c-s3);margin-top:2px;">AD/realm binding must be present.</span>
+            </span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <input type="checkbox" name="allow_unknown_posture" {% if device_posture_policy.allow_unknown_posture %}checked{% endif %} style="accent-color:var(--c-blue);margin-top:2px;">
+            <span>
+              <span style="display:block;font-size:12px;font-weight:600;color:#e8eaed;">Allow unknown posture</span>
+              <span style="display:block;font-size:10px;color:var(--c-s3);margin-top:2px;">Rollout mode for legacy clients.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Allowed Domains</label>
+          <textarea class="form-input" name="allowed_domains" rows="3" placeholder="corp.example.com&#10;ad.example.internal">{{ device_posture_policy.allowed_domains|join('\n') }}</textarea>
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Leave empty to allow any joined domain when domain join is required.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allowed Operating Systems</label>
+          <input class="form-input" name="allowed_os" value="{{ device_posture_policy.allowed_os|join(', ') }}" placeholder="windows, darwin, linux">
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Optional comma-separated GOOS values reported by the agent.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Allowed Directory Services</label>
+          <input class="form-input" name="allowed_directory_services" value="{{ device_posture_policy.allowed_directory_services|join(', ') }}" placeholder="active_directory, realm">
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Optional provider allowlist for enterprise join evidence.</div>
+        </div>
+        <button type="submit" class="btn-primary" style="width:100%;justify-content:center;">Save Posture Policy</button>
+      </form>
+    </div>
+
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Policy Model</div>
+          <div class="s-card-sub">Extensible posture schema used by client enrollment</div>
+        </div>
+      </div>
+      <div style="padding:0 18px 18px;">
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px;">
+          <div style="padding:11px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <div style="font-size:11px;font-weight:600;color:#e8eaed;">Identity binding</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:3px;">User approval + signed device key + posture evaluated before trust.</div>
+          </div>
+          <div style="padding:11px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <div style="font-size:11px;font-weight:600;color:#e8eaed;">Enterprise checks</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:3px;">Domain, OS, directory provider, hardware identifiers, and future MDM fields.</div>
+          </div>
+          <div style="padding:11px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <div style="font-size:11px;font-weight:600;color:#e8eaed;">Rollout modes</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:3px;">Monitor first, then enforce when client coverage is high.</div>
+          </div>
+          <div style="padding:11px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:8px;">
+            <div style="font-size:11px;font-weight:600;color:#e8eaed;">Auditability</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:3px;">Denied enrollments emit posture reason and evaluated policy context.</div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:8px;">Current JSON</div>
+        <pre class="code-block" style="white-space:pre-wrap;font-size:11px;line-height:1.55;">{{ device_posture_policy|tojson(indent=2) }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ACCESS GRANTS TAB ─────────────────────────────────────── -->
+<div id="tab-grants" style="display:none;">
+  <div style="display:grid;grid-template-columns:1fr 400px;gap:20px;align-items:start;">
+
+    <!-- Grants Table -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div><div class="s-card-title">Access Grants</div><div class="s-card-sub">{{ access_grants|length }} grant{{ 's' if access_grants|length != 1 }} — who can access which servers as which Unix user</div></div>
+        <input class="form-filter" type="text" placeholder="Filter…" data-filter-input data-filter-target="#grants-tbody tr.grant-row">
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Servers</th>
+              <th>Unix Principals</th>
+              <th>Valid Until</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="grants-tbody">
+            {% for grant in access_grants %}
+            <tr class="grant-row">
+              <td>
+                {% if grant.subject_type == 'group' %}
+                <span class="tag" style="background:rgba(168,85,247,.1);color:var(--c-purple);margin-bottom:2px;">group</span>
+                {% else %}
+                <span class="tag" style="background:rgba(59,130,246,.1);color:var(--c-blue);margin-bottom:2px;">user</span>
+                {% endif %}
+                <div style="font-size:12px;color:#e8eaed;margin-top:2px;">{{ grant.subject_name or grant.subject_id }}</div>
+              </td>
+              <td>
+                <div style="font-size:12px;color:#e8eaed;">{{ grant.server_scope_name or 'All Servers' }}</div>
+                <div style="font-size:11px;color:var(--c-s4);">{{ grant.server_scope_type }}</div>
+              </td>
+              <td>
+                {% for p in grant.unix_principals %}<span class="tag" style="font-family:'JetBrains Mono',monospace;font-size:11px;margin:1px;">{{ p }}</span>{% endfor %}
+              </td>
+              <td style="font-size:12px;color:var(--c-s4);">
+                {% if grant.valid_until %}
+                  {% set vuntil = grant.valid_until[:16].replace('T',' ') %}
+                  <span>{{ vuntil }}</span>
+                {% else %}<span class="sbadge sbadge-green" style="font-size:10px;">Permanent</span>{% endif %}
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.access_grants_delete', grant_id=grant.id) }}" onsubmit="return confirm('Delete this access grant?')">
+                  <button class="btn-danger" type="submit" style="font-size:11px;padding:3px 8px;">Revoke</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="dt-empty">No access grants yet. Create one to give a user or group SSH access to servers.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Create Grant form -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div class="s-card-title">New Access Grant</div>
+      </div>
+      <form method="POST" action="{{ url_for('admin.access_grants_create') }}" style="padding:0 16px 16px;">
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label">Subject Type <span style="color:var(--c-red);">*</span></label>
+          <select class="form-select-input" name="subject_type" id="grantSubjectType" onchange="_updateGrantSubjects()">
+            <option value="user">User</option>
+            <option value="group">Group</option>
+          </select>
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Who receives this access entitlement</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject <span style="color:var(--c-red);">*</span></label>
+          <select class="form-select-input" name="subject_id" id="grantSubjectId">
+            {% for opt in subject_options.user %}
+            <option value="{{ opt.value }}" data-type="user">{{ opt.label }}</option>
+            {% endfor %}
+            {% for opt in subject_options.group %}
+            <option value="{{ opt.value }}" data-type="group" style="display:none;">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Server Scope <span style="color:var(--c-red);">*</span></label>
+          <select class="form-select-input" name="server_scope_type" id="grantScopeType" onchange="_updateGrantScope()">
+            <option value="all">All Enrolled Servers</option>
+            <option value="server">Specific Server</option>
+            <option value="server_group">Server Group</option>
+          </select>
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Which servers the subject can access</div>
+        </div>
+        <div class="form-group" id="grantScopeIdGroup" style="display:none;">
+          <label class="form-label">Select Server / Group</label>
+          <select class="form-select-input" name="server_scope_id" id="grantScopeId"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unix Principals <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="unix_principals" placeholder="ubuntu, ec2-user, deploy" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+          <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Comma-separated Unix usernames the subject may log in as</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Valid From</label>
+            <input class="form-input" name="valid_from" type="datetime-local" style="font-size:12px;">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Valid Until</label>
+            <input class="form-input" name="valid_until" type="datetime-local" style="font-size:12px;">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--c-s3);margin-bottom:14px;margin-top:3px;">Leave blank for permanent grant</div>
+        <button class="btn-primary" type="submit" style="width:100%;justify-content:center;">Create Access Grant</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── CREATE POLICY MODAL ────────────────────────────────────── -->
+<div class="modal-overlay" id="createPolicyModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-head" style="position:sticky;top:0;background:var(--c-s1);z-index:1;">
+      <div class="modal-title">New Policy</div>
+      <button class="modal-close" onclick="document.getElementById('createPolicyModal').style.display='none'"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.policies_create') }}">
+      <div class="modal-body">
+
+        <!-- Basics -->
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;margin-bottom:4px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Policy Name <span style="color:var(--c-red);">*</span></label>
+            <input class="form-input" name="name" required placeholder="prod/allow-engineers">
+            <div style="font-size:11px;color:var(--c-s3);margin-top:3px;">Use <code style="font-size:10px;background:var(--c-s2);padding:1px 4px;border-radius:3px;">folder/name</code> convention to group policies</div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:110px;">
+            <label class="form-label">Effect <span style="color:var(--c-red);">*</span></label>
+            <select class="form-select-input" name="effect" id="modalEffect" onchange="_toggleEffect()">
+              <option value="allow">Allow</option>
+              <option value="deny">Deny</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:90px;">
+            <label class="form-label">Priority</label>
+            <input class="form-input" name="priority" type="number" value="1000" min="1">
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--c-s4);cursor:pointer;">
+            <input type="checkbox" name="enabled" value="on" checked style="accent-color:var(--c-blue);"> Enabled immediately
+          </label>
+        </div>
+
+        <!-- Conditions section -->
+        <div style="background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;padding:14px;margin-bottom:14px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-s4);margin-bottom:12px;">Conditions <span style="font-weight:400;color:var(--c-s3);">(leave blank to match all)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Device Status</label>
+              <select class="form-select-input" name="device_status">
+                <option value="">Any device status</option>
+                {% for ds in device_statuses %}<option value="{{ ds }}">{{ ds }}</option>{% endfor %}
+              </select>
+              <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Requesting device must have this status</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Server Environment</label>
+              <select class="form-select-input" name="server_environment">
+                <option value="">Any environment</option>
+                {% for env in server_environments %}<option value="{{ env }}">{{ env }}</option>{% endfor %}
+              </select>
+              <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Target server must match this environment tag</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">SSH Principal</label>
+              <input class="form-input" name="ssh_principal" placeholder="e.g. ubuntu">
+              <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Restrict to a specific Unix login name</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Source IP CIDR</label>
+              <input class="form-input" name="source_ip" placeholder="e.g. 10.0.0.0/8">
+              <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Only allow requests from this IP range</div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Policy Subject</label>
+              <select class="form-select-input" name="policy_subject_type" id="modalSubjectType" onchange="_togglePolicySubject()">
+                <option value="">Anyone</option>
+                <option value="user">Specific User</option>
+                <option value="group">Specific Group</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;" id="modalSubjectIdGroup" style="display:none;">
+              <label class="form-label">Select User / Group</label>
+              <select class="form-select-input" name="policy_subject_id" id="modalSubjectId">
+                {% for opt in subject_options.user %}<option value="{{ opt.value }}" data-type="user">{{ opt.label }}</option>{% endfor %}
+                {% for opt in subject_options.group %}<option value="{{ opt.value }}" data-type="group">{{ opt.label }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Server Tag Key</label>
+              <input class="form-input" name="server_tag_key" placeholder="e.g. team">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Server Tag Value</label>
+              <input class="form-input" name="server_tag_value" placeholder="e.g. backend">
+              <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Both key and value required to match server tags</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Allow actions -->
+        <div id="allowActions" style="background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;padding:14px;margin-bottom:4px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-s4);margin-bottom:12px;">Certificate Settings</div>
+          <div class="form-group">
+            <label class="form-label">Certificate TTL (seconds)</label>
+            <input class="form-input" name="ttl_seconds" type="number" value="300" min="60" max="86400">
+            <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">How long the issued SSH cert is valid. Default: 300s (5m). Max recommended: 3600s.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            {% for flag, label, desc in [
+              ('permit_pty',              'Permit PTY',         'Allow interactive shell sessions'),
+              ('permit_agent_forwarding', 'Agent Forwarding',   'Allow SSH agent forwarding (grants access to other systems via local keys)'),
+              ('permit_x11_forwarding',   'X11 Forwarding',     'Allow X11 GUI applications over SSH'),
+              ('require_user_presence',   'Require User Touch', 'Enforce physical keyward tap at cert issuance')
+            ] %}
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:8px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;">
+              <input type="checkbox" name="{{ flag }}" value="on" {% if flag == 'permit_pty' %}checked{% endif %} style="accent-color:var(--c-blue);margin-top:2px;flex-shrink:0;">
+              <div>
+                <div style="font-size:12px;color:#e8eaed;">{{ label }}</div>
+                <div style="font-size:10px;color:var(--c-s3);margin-top:1px;">{{ desc }}</div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Deny actions -->
+        <div id="denyActions" style="display:none;background:var(--c-bg);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:14px;margin-bottom:4px;">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-red);margin-bottom:10px;">Deny Settings</div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Deny Reason</label>
+            <input class="form-input" name="deny_reason" placeholder="e.g. policy_denied, outside_hours" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+            <div style="font-size:10px;color:var(--c-s3);margin-top:2px;">Reason string returned to the client when access is denied</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('createPolicyModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Create Policy</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .tab-btn { background:none; border:none; border-bottom:2px solid transparent; color:var(--c-s4); cursor:pointer; font-size:13px; font-weight:500; font-family:inherit; padding:8px 16px; margin-bottom:-1px; transition:color .15s, border-color .15s; }
+  .tab-btn:hover { color:#e8eaed; }
+  .tab-active { color:var(--c-blue) !important; border-bottom-color:var(--c-blue) !important; }
+</style>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function _tab(name) {
+  ['policies','grants','posture'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+    document.getElementById('tab-btn-' + t).classList.toggle('tab-active', t === name);
+  });
+}
+function _openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function _expandRow(id) {
+  const row = document.getElementById('expand-' + id);
+  const icon = document.querySelector('[data-expand-icon="' + id + '"]');
+  if (!row) return;
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+}
+function _toggleFolder(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+function _toggleEffect() {
+  const eff = document.getElementById('modalEffect').value;
+  document.getElementById('allowActions').style.display = eff === 'allow' ? '' : 'none';
+  document.getElementById('denyActions').style.display  = eff === 'deny'  ? '' : 'none';
+}
+function _togglePolicySubject() {
+  const type = document.getElementById('modalSubjectType').value;
+  const grp = document.getElementById('modalSubjectIdGroup');
+  if (!grp) return;
+  grp.style.display = type ? '' : 'none';
+  if (type) _filterSubjectOptions('modalSubjectId', type);
+}
+function _filterSubjectOptions(selectId, type) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  Array.from(sel.options).forEach(opt => { opt.style.display = (!opt.dataset.type || opt.dataset.type === type) ? '' : 'none'; });
+  const first = Array.from(sel.options).find(o => o.style.display !== 'none');
+  if (first) sel.value = first.value;
+}
+function _updateGrantSubjects() {
+  const type = document.getElementById('grantSubjectType').value;
+  _filterSubjectOptions('grantSubjectId', type);
+}
+function _updateGrantScope() {
+  const type = document.getElementById('grantScopeType').value;
+  const grp = document.getElementById('grantScopeIdGroup');
+  grp.style.display = type !== 'all' ? '' : 'none';
+  const sel = document.getElementById('grantScopeId');
+  sel.innerHTML = '';
+  const opts = type === 'server' ? {{ scope_options.server|tojson }} : {{ scope_options.server_group|tojson }};
+  opts.forEach(o => { const opt = document.createElement('option'); opt.value = o.value; opt.textContent = o.label; sel.appendChild(opt); });
+}
+// init top grants button alias
+document.getElementById('top-grants-btn').addEventListener('click', () => _tab('grants'));
+document.getElementById('top-posture-btn').addEventListener('click', () => _tab('posture'));
+</script>
+{% endblock %}

@@ -1,0 +1,268 @@
+{% extends "admin/base.html" %}
+{% block title %}Users & RBAC{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Users & RBAC</h1>
+    <div class="page-sub">Manage identities, roles, and access controls</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn-primary" onclick="document.getElementById('createUserModal').style.display='flex'">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      New User
+    </button>
+  </div>
+</div>
+
+<!-- Metric Tiles -->
+<div class="metric-grid" style="margin-bottom:24px;">
+  <div class="metric-tile">
+    <div class="metric-icon mi-blue">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ user_summary.total }}</div>
+      <div class="metric-label">Total Users</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-purple">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ user_summary.admins }}</div>
+      <div class="metric-label">Administrators</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-green">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ user_summary.trusted_devices }}</div>
+      <div class="metric-label">Trusted Devices</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-amber">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ user_summary.suspended }}</div>
+      <div class="metric-label">Suspended</div>
+    </div>
+  </div>
+</div>
+
+<!-- Users Table -->
+<div class="s-card">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">All Users</div>
+      <div class="s-card-sub">Click a row to expand identity details and actions</div>
+    </div>
+    <input class="form-filter" type="text" placeholder="Filter users…" id="userFilter">
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Auth Provider</th>
+          <th>Roles</th>
+          <th>Devices</th>
+          <th>Status</th>
+          <th>Last Login</th>
+        </tr>
+      </thead>
+      <tbody id="users-tbody">
+        {% for user in users %}
+        <tr class="user-row" onclick="toggleExpand(this)" style="cursor:pointer;">
+          <td>
+            <div style="font-weight:500;color:#e8eaed;">{{ user.display_name or user.email }}</div>
+            <div style="font-size:11px;color:var(--c-s4);">{{ user.email }}</div>
+          </td>
+          <td><span class="tag">{{ user.auth_provider }}</span></td>
+          <td>
+            {% for role in user.roles %}
+            <span class="tag {% if role == 'admin' %}tag-danger{% endif %}" style="margin:1px;">{{ role }}</span>
+            {% else %}
+            <span style="color:var(--c-s3);font-size:12px;">—</span>
+            {% endfor %}
+          </td>
+          <td>
+            <span style="font-size:13px;">{{ user.devices.trusted }}<span style="color:var(--c-s3);">/{{ user.devices.total }}</span></span>
+            <span style="font-size:11px;color:var(--c-s4);"> trusted</span>
+          </td>
+          <td>
+            {% if user.status == 'active' %}<span class="sbadge sbadge-green">Active</span>
+            {% elif user.status == 'suspended' %}<span class="sbadge sbadge-amber">Suspended</span>
+            {% else %}<span class="sbadge sbadge-muted">{{ user.status }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ user.last_login_at[:10] if user.last_login_at else '—' }}</td>
+        </tr>
+        <!-- Expand Row -->
+        <tr class="expand-row collapse" id="expand-{{ user.id }}" style="display:none;">
+          <td colspan="6" style="padding:0;">
+            <div style="padding:16px 20px 20px;background:var(--c-s1);border-bottom:1px solid var(--c-s2);">
+              <div class="row g-3">
+                <!-- Identity Profile -->
+                <div class="col-lg-4">
+                  <div class="s-card" style="margin:0;">
+                    <div class="s-card-head"><div class="s-card-title" style="font-size:13px;">Identity Profile</div></div>
+                    <div style="padding:0 16px 16px;">
+                      <form method="POST" action="{{ url_for('admin.users_update_profile', user_id=user.id) }}">
+                        <div class="form-group">
+                          <label class="form-label">Display Name</label>
+                          <input class="form-input" name="display_name" value="{{ user.display_name or '' }}" placeholder="Display name">
+                        </div>
+                        <div class="form-group">
+                          <label class="form-label">External ID</label>
+                          <input class="form-input" name="external_id" value="{{ user.external_id or '' }}" placeholder="OIDC/SAML subject">
+                        </div>
+                        <div class="form-group">
+                          <label class="form-label">Email</label>
+                          <input class="form-input" value="{{ user.email }}" disabled style="opacity:.5;">
+                        </div>
+                        <button class="btn-primary" type="submit" style="width:100%;margin-top:4px;">Save Profile</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <!-- Access Context -->
+                <div class="col-lg-4">
+                  <div class="s-card" style="margin:0;">
+                    <div class="s-card-head"><div class="s-card-title" style="font-size:13px;">Access Context</div></div>
+                    <div style="padding:0 16px 16px;">
+                      <div style="margin-bottom:12px;">
+                        <div class="form-label" style="margin-bottom:6px;">Groups</div>
+                        {% if user.groups %}
+                        {% for g in user.groups %}<span class="tag" style="margin:2px;">{{ g.name }}<span style="color:var(--c-s3);"> ({{ g.source }})</span></span>{% endfor %}
+                        {% else %}<span style="font-size:12px;color:var(--c-s3);">No groups</span>{% endif %}
+                      </div>
+                      <div>
+                        <div class="form-label" style="margin-bottom:6px;">Accessible Servers</div>
+                        {% if user.accessible_servers %}
+                        {% for s in user.accessible_servers %}<div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);padding:2px 0;">{{ s.hostname }}</div>{% endfor %}
+                        {% if user.accessible_server_count > user.accessible_servers|length %}
+                        <div style="font-size:11px;color:var(--c-s3);margin-top:4px;">+{{ user.accessible_server_count - user.accessible_servers|length }} more</div>
+                        {% endif %}
+                        {% else %}<span style="font-size:12px;color:var(--c-s3);">No access grants</span>{% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Admin Actions -->
+                <div class="col-lg-4">
+                  <div class="s-card" style="margin:0;">
+                    <div class="s-card-head"><div class="s-card-title" style="font-size:13px;">Administrative Actions</div></div>
+                    <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:10px;">
+                      <!-- Status -->
+                      <form method="POST" action="{{ url_for('admin.users_set_status', user_id=user.id) }}" style="display:flex;gap:8px;align-items:center;">
+                        <select class="form-select-input" name="status" style="flex:1;">
+                          <option value="active" {% if user.status == 'active' %}selected{% endif %}>Active</option>
+                          <option value="suspended" {% if user.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                        </select>
+                        <button class="btn-ghost" type="submit" style="white-space:nowrap;font-size:12px;">Set Status</button>
+                      </form>
+                      <!-- Assign Role -->
+                      <form method="POST" action="{{ url_for('admin.users_assign_role', user_id=user.id) }}" style="display:flex;gap:8px;align-items:center;">
+                        <select class="form-select-input" name="role" style="flex:1;">
+                          <option value="admin">admin</option>
+                          <option value="user">user</option>
+                        </select>
+                        <button class="btn-ghost" type="submit" style="white-space:nowrap;font-size:12px;">Assign Role</button>
+                      </form>
+                      <!-- Remove Roles -->
+                      {% for role in user.roles %}
+                      <form method="POST" action="{{ url_for('admin.users_remove_role', user_id=user.id) }}" style="display:flex;align-items:center;gap:8px;">
+                        <input type="hidden" name="role" value="{{ role }}">
+                        <span style="font-size:12px;flex:1;">Remove <strong>{{ role }}</strong> role</span>
+                        <button class="btn-danger" type="submit" style="font-size:11px;padding:4px 10px;">Remove</button>
+                      </form>
+                      {% endfor %}
+                      <!-- Reset Password (local only) -->
+                      {% if user.auth_provider == 'local' %}
+                      <form method="POST" action="{{ url_for('admin.users_reset_password', user_id=user.id) }}" style="display:flex;gap:8px;align-items:center;">
+                        <input class="form-input" name="password" type="password" placeholder="New password" style="flex:1;font-size:12px;">
+                        <button class="btn-ghost" type="submit" style="white-space:nowrap;font-size:12px;">Reset</button>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="dt-empty">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createUserModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Create User</div>
+      <button class="modal-close" onclick="document.getElementById('createUserModal').style.display='none'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.users_create') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Email <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="email" type="email" required placeholder="user@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input class="form-input" name="display_name" placeholder="Full name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="password" type="password" required placeholder="Initial password">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Roles</label>
+          <div style="display:flex;gap:16px;padding:8px 0;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" name="roles" value="user" checked style="accent-color:var(--c-blue);">user
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" name="roles" value="admin" style="accent-color:var(--c-blue);">admin
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('createUserModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function toggleExpand(row) {
+    const next = row.nextElementSibling;
+    if (!next || !next.classList.contains('expand-row')) return;
+    const open = next.style.display !== 'none';
+    next.style.display = open ? 'none' : '';
+    row.classList.toggle('expand-open', !open);
+  }
+
+  document.getElementById('userFilter')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('#users-tbody .user-row').forEach((row) => {
+      const visible = row.textContent.toLowerCase().includes(term);
+      row.style.display = visible ? '' : 'none';
+      const details = row.nextElementSibling;
+      if (details?.classList.contains('expand-row')) details.style.display = visible ? details.style.display : 'none';
+    });
+  });
+</script>
+{% endblock %}

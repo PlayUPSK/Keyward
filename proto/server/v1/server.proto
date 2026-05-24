@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package keyward.server.v1;
+
+option go_package = "github.com/playup/keyward/proto/server/v1;serverv1";
+
+service ServerService {
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message HeartbeatRequest {
+  string server_id = 1;
+  string agent_version = 2;
+}
+
+message HeartbeatResponse {
+  string status = 1;
+}

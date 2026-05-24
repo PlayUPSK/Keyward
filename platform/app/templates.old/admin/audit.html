@@ -1,0 +1,180 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Explorer{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Audit Explorer</h1>
+    <p class="page-sub">Authentication, device, policy, integration, and certificate events with full metadata context.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Reset Filters
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="s-card mb-3">
+  <div class="s-card-head">
+    <div class="s-card-title">Filters</div>
+    <div class="cell-s" style="color:var(--c-text-3);">Max 500 events per query</div>
+  </div>
+  <div style="padding:0 20px 20px;">
+    <form class="row g-3 align-items-end" method="get">
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label">Event Type</label>
+        <select class="form-select-input" name="event_type">
+          <option value="">All event types</option>
+          {% for option in filters.event_types %}<option value="{{ option }}" {% if selected_filters.event_type == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label">Outcome</label>
+        <select class="form-select-input" name="outcome">
+          <option value="">All outcomes</option>
+          {% for option in filters.outcomes %}<option value="{{ option }}" {% if selected_filters.outcome == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label">Target Type</label>
+        <select class="form-select-input" name="target_type">
+          <option value="">All targets</option>
+          {% for option in filters.target_types %}<option value="{{ option }}" {% if selected_filters.target_type == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2 col-md-6">
+        <label class="form-label">Source IP</label>
+        <input class="form-input" name="source_ip" value="{{ selected_filters.source_ip }}" placeholder="203.0.113.0">
+      </div>
+      <div class="col-lg-3 col-md-6">
+        <label class="form-label">Reason</label>
+        <input class="form-input" name="reason" value="{{ selected_filters.reason }}" placeholder="policy_denied">
+      </div>
+      <div class="col-lg-7 col-md-8">
+        <label class="form-label">Metadata Search</label>
+        <input class="form-input" name="metadata_query" value="{{ selected_filters.metadata_query }}" placeholder="device fingerprint, hostname, policy name, provider…">
+      </div>
+      <div class="col-lg-2 col-md-4">
+        <label class="form-label">Limit</label>
+        <input class="form-input" name="limit" value="{{ selected_filters.limit }}" inputmode="numeric">
+      </div>
+      <div class="col-lg-3">
+        <button class="btn btn-primary btn-sm" type="submit" style="width:100%;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Apply Filters
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Audit Events table -->
+<div class="s-card">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Audit Events</div>
+      <div class="s-card-sub">{{ audit_events | length }} event{{ 's' if audit_events | length != 1 else '' }} shown</div>
+    </div>
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Event</th>
+          <th>Outcome</th>
+          <th>Actor</th>
+          <th>Target</th>
+          <th>Network</th>
+          <th>Reason</th>
+          <th style="text-align:right;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in audit_events %}
+        <tr class="user-row" style="cursor:pointer;" onclick="this.nextElementSibling.classList.toggle('expand-open')">
+          <td><span class="cell-s" style="white-space:nowrap;">{{ event.created_at }}</span></td>
+          <td>
+            <div style="font-size:12px;font-weight:600;color:var(--c-text);">{{ event.event_type }}</div>
+            <div class="cell-m" style="font-size:10px;">{{ event.id }}</div>
+          </td>
+          <td>
+            {% if event.outcome == 'success' %}
+              <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>success</span>
+            {% elif event.outcome in ['denied', 'error'] %}
+              <span class="sbadge sbadge-red"><span class="sbadge-dot"></span>{{ event.outcome }}</span>
+            {% else %}
+              <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>{{ event.outcome }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if event.actor_user_id %}
+              <div class="cell-s">user</div>
+              <div class="cell-m" style="font-size:10px;">{{ event.actor_user_id }}</div>
+            {% endif %}
+            {% if event.actor_device_id %}
+              <div class="cell-s">device</div>
+              <div class="cell-m" style="font-size:10px;">{{ event.actor_device_id }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="cell-s">{{ event.target_type or "—" }}</div>
+            <div class="cell-m" style="font-size:10px;">{{ event.target_id or "" }}</div>
+          </td>
+          <td>
+            <div class="cell-m" style="font-family:'JetBrains Mono',monospace;font-size:11px;">{{ event.source_ip or "—" }}</div>
+            <div class="cell-s" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ event.user_agent or "" }}</div>
+          </td>
+          <td><span class="cell-s" style="color:var(--c-text-2);">{{ event.reason or "—" }}</span></td>
+          <td style="text-align:right;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--c-text-3);"><path d="m6 9 6 6 6-6"/></svg>
+          </td>
+        </tr>
+        <tr class="expand-row" id="auditDetails{{ loop.index }}">
+          <td colspan="8">
+            <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:16px;padding:4px 0 8px;">
+              <!-- Core Fields -->
+              <div class="s-card" style="background:var(--c-s2);border-color:var(--c-border);">
+                <div class="s-card-head" style="padding:12px 16px 8px;"><div class="s-card-title">Identifiers</div></div>
+                <div style="padding:0 16px 12px;display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;align-items:baseline;">
+                  <span class="cell-s">Event ID</span><span class="cell-m" style="font-size:10px;word-break:break-all;">{{ event.id }}</span>
+                  <span class="cell-s">Type</span><span class="cell-s" style="color:var(--c-text-2);">{{ event.event_type }}</span>
+                  <span class="cell-s">Outcome</span><span class="cell-s" style="color:var(--c-text-2);">{{ event.outcome }}</span>
+                  <span class="cell-s">Reason</span><span class="cell-s" style="color:var(--c-text-2);">{{ event.reason or "—" }}</span>
+                  <span class="cell-s">Source IP</span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--c-text-2);">{{ event.source_ip or "—" }}</span>
+                  <span class="cell-s">Actor User</span><span class="cell-m" style="font-size:10px;">{{ event.actor_user_id or "—" }}</span>
+                  <span class="cell-s">Actor Device</span><span class="cell-m" style="font-size:10px;">{{ event.actor_device_id or "—" }}</span>
+                  <span class="cell-s">Target</span><span class="cell-s" style="color:var(--c-text-2);">{{ event.target_type or "—" }} {{ event.target_id or "" }}</span>
+                </div>
+              </div>
+              <!-- Metadata -->
+              <div class="s-card" style="background:var(--c-s2);border-color:var(--c-border);">
+                <div class="s-card-head" style="padding:12px 16px 8px;"><div class="s-card-title">Event Metadata</div></div>
+                <div class="dt-wrap" style="max-height:200px;overflow-y:auto;">
+                  <table class="dt">
+                    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+                    <tbody>
+                      {% for key, value in event.metadata.items() %}
+                      <tr>
+                        <td><span class="cell-m">{{ key }}</span></td>
+                        <td><span class="code-block" style="font-size:11px;padding:2px 6px;display:inline;">{{ value }}</span></td>
+                      </tr>
+                      {% else %}
+                      <tr><td colspan="2"><div class="dt-empty">No metadata recorded.</div></td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8"><div class="dt-empty">No audit events match the current filters.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

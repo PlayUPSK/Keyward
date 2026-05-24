@@ -1,0 +1,143 @@
+{% extends "layout.html" %}
+{% block title %}My Access Portal{% endblock %}
+{% block content %}
+<!-- Portal Hero -->
+<div style="background:linear-gradient(135deg,var(--c-s2) 0%,var(--c-s1) 100%);border:1px solid var(--c-border);border-radius:12px;padding:24px 28px;margin-bottom:24px;">
+  <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <div style="font-size:11px;color:var(--c-text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Signed in as</div>
+      <div style="font-size:22px;font-weight:700;color:var(--c-text);">{{ current_user.display_name or current_user.email }}</div>
+      <div style="font-size:13px;color:var(--c-text-3);">{{ current_user.email }}</div>
+    </div>
+    <a class="btn btn-primary btn-sm" href="{{ url_for('portal.enroll_device') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><line x1="12" x2="12" y1="8" y2="13"/><line x1="9.5" x2="14.5" y1="10.5" y2="10.5"/></svg>
+      Enroll New Device
+    </a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+    {% set trusted_count = devices | selectattr("status", "equalto", "trusted") | list | length %}
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--c-border);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:var(--c-text-3);margin-bottom:4px;">Accessible Servers</div>
+      <div style="font-size:28px;font-weight:700;color:var(--c-text);">{{ servers | length }}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--c-border);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:var(--c-text-3);margin-bottom:4px;">Registered Devices</div>
+      <div style="font-size:28px;font-weight:700;color:var(--c-text);">{{ devices | length }}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--c-border);border-radius:8px;padding:14px 16px;">
+      <div style="font-size:11px;color:var(--c-text-3);margin-bottom:4px;">Trusted Devices</div>
+      <div style="font-size:28px;font-weight:700;color:{% if trusted_count %}var(--c-green){% else %}var(--c-amber){% endif %};">{{ trusted_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- SSH Access list -->
+  <div class="col-xl-8">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Your SSH Access</div>
+          <div class="s-card-sub">Servers available from your groups, grants, and current policy state.</div>
+        </div>
+        <div class="s-card-actions">
+          <input class="form-filter" type="text" placeholder="Filter servers…" data-filter-input data-filter-target="#access-list .access-item">
+        </div>
+      </div>
+      <div id="access-list">
+        {% for server in servers %}
+        <div class="access-item" style="padding:16px 20px;border-bottom:1px solid var(--c-border);">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--c-text);">{{ server.hostname }}</div>
+              <div class="cell-s">{{ server.environment }} &middot; 
+                {% if server.status == 'enrolled' %}
+                  <span style="color:var(--c-green);">{{ server.status }}</span>
+                {% else %}
+                  <span style="color:var(--c-amber);">{{ server.status }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              {% for principal in server.principals %}
+              <span class="tag">{{ principal }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <div class="cell-s" style="margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Certificate Request</div>
+            <div class="code-block">keyward-agent issue-cert --server {{ server.hostname }} --principal {{ server.principals[0] if server.principals else "user" }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="padding:40px 20px;text-align:center;">
+          <div style="font-size:13px;color:var(--c-text-3);">No access grants are currently assigned to your account.</div>
+          <div class="cell-s" style="margin-top:4px;">Contact your administrator to request access.</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="col-xl-4">
+    <!-- Device Trust -->
+    <div class="s-card mb-3">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Device Trust</div>
+          <div class="s-card-sub">Only trusted devices can request SSH certs.</div>
+        </div>
+      </div>
+      {% for device in devices %}
+      <div style="padding:12px 20px;border-bottom:1px solid var(--c-border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ device.name }}</div>
+          <div class="cell-s">{{ device.platform }} &middot; {{ device.trust_level }}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--c-text-3);margin-top:2px;">{{ device.fingerprint }}</div>
+        </div>
+        {% if device.status == 'trusted' %}
+          <span class="sbadge sbadge-green" style="flex-shrink:0;"><span class="sbadge-dot"></span>trusted</span>
+        {% elif device.status == 'revoked' %}
+          <span class="sbadge sbadge-red" style="flex-shrink:0;"><span class="sbadge-dot"></span>revoked</span>
+        {% else %}
+          <span class="sbadge sbadge-amber" style="flex-shrink:0;"><span class="sbadge-dot"></span>{{ device.status }}</span>
+        {% endif %}
+      </div>
+      {% else %}
+      <div style="padding:20px;text-align:center;font-size:13px;color:var(--c-text-3);">No enrolled devices yet.</div>
+      {% endfor %}
+    </div>
+
+    <!-- Access Health -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div class="s-card-title">Access Health</div>
+      </div>
+      <div style="padding:8px 20px 16px;">
+        {% set trusted_devices = devices | selectattr("status", "equalto", "trusted") | list %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--c-border);">
+          <span style="font-size:13px;color:var(--c-text-2);">Signed into platform</span>
+          <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>Ready</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--c-border);">
+          <span style="font-size:13px;color:var(--c-text-2);">Trusted device</span>
+          {% if trusted_devices | length %}
+            <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>Ready</span>
+          {% else %}
+            <span class="sbadge sbadge-amber"><span class="sbadge-dot"></span>Needed</span>
+          {% endif %}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+          <span style="font-size:13px;color:var(--c-text-2);">Server grants</span>
+          {% if servers | length %}
+            <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>Ready</span>
+          {% else %}
+            <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>None</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "admin/base.html" %}
+{% block title %}Servers{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Server Inventory</h1>
+    <div class="page-sub">SSH-enabled servers registered with the platform</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn-primary" onclick="document.getElementById('createGroupModal').style.display='flex'">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Group
+    </button>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Servers Table -->
+  <div class="col-xl-8">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Servers</div>
+          <div class="s-card-sub">{{ servers|length }} registered</div>
+        </div>
+        <input class="form-filter" type="text" placeholder="Filter servers…" data-filter-input data-filter-target="#servers-tbody tr">
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Hostname</th>
+              <th>Environment</th>
+              <th>Status</th>
+              <th>Agent Version</th>
+              <th>Last Seen</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="servers-tbody">
+            {% for server in servers %}
+            <tr>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:#e8eaed;">{{ server.hostname }}</td>
+              <td>{% if server.environment %}<span class="tag">{{ server.environment }}</span>{% else %}<span style="color:var(--c-s3);">—</span>{% endif %}</td>
+              <td>
+                {% if server.status == 'enrolled' %}<span class="sbadge sbadge-green">Enrolled</span>
+                {% elif server.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>
+                {% elif server.status == 'decommissioned' %}<span class="sbadge sbadge-muted">Decommissioned</span>
+                {% else %}<span class="sbadge">{{ server.status }}</span>{% endif %}
+              </td>
+              <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ server.agent_version or '—' }}</td>
+              <td style="font-size:12px;color:var(--c-s4);">{{ server.last_seen_at.strftime('%Y-%m-%d %H:%M') if server.last_seen_at else '—' }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.servers_status', server_id=server.id) }}" style="display:flex;gap:6px;align-items:center;">
+                  <select class="form-select-input" name="status" style="font-size:11px;padding:3px 8px;width:auto;">
+                    <option value="enrolled" {% if server.status == 'enrolled' %}selected{% endif %}>enrolled</option>
+                    <option value="pending" {% if server.status == 'pending' %}selected{% endif %}>pending</option>
+                    <option value="decommissioned" {% if server.status == 'decommissioned' %}selected{% endif %}>decommissioned</option>
+                  </select>
+                  <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 9px;white-space:nowrap;">Set</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="dt-empty">No servers registered yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server Groups -->
+  <div class="col-xl-4">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Server Groups</div>
+          <div class="s-card-sub">{{ server_groups|length }} group{{ 's' if server_groups|length != 1 }}</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:8px;">
+        {% for group in server_groups %}
+        <div style="padding:12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="font-weight:600;font-size:13px;color:#e8eaed;">{{ group.name }}</div>
+          {% if group.description %}
+          <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ group.description }}</div>
+          {% endif %}
+          <div style="font-size:11px;color:var(--c-s3);margin-top:4px;">{{ group.server_ids|length }} server{{ 's' if group.server_ids|length != 1 }}</div>
+        </div>
+        {% else %}
+        <div class="dt-empty" style="padding:24px 0;">No groups created yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Server Group Modal -->
+<div class="modal-overlay" id="createGroupModal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-title">Create Server Group</div>
+      <button class="modal-close" onclick="document.getElementById('createGroupModal').style.display='none'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.server_groups_create') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Group Name <span style="color:var(--c-red);">*</span></label>
+          <input class="form-input" name="name" required placeholder="e.g. prod-eu-west">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input class="form-input" name="description" placeholder="Optional description">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-ghost" onclick="document.getElementById('createGroupModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn-primary">Create Group</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

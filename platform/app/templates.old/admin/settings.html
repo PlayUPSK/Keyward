@@ -1,0 +1,156 @@
+{% extends "admin/base.html" %}
+{% block title %}Settings{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <p class="page-sub">Identity federation, provisioning, SSH certificate authority, and hardening controls.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit', event_type='integration.scim.sync') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+      Integration Audit
+    </a>
+  </div>
+</div>
+
+<!-- Integrations grid -->
+{% if integrations %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:24px;">
+  {% for integration in integrations %}
+  <div class="s-card" style="display:flex;flex-direction:column;">
+    <div style="padding:16px 20px 12px;border-bottom:1px solid var(--c-border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+      <div>
+        <div class="cell-s" style="text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">{{ integration.provider }}</div>
+        <div style="font-size:15px;font-weight:600;color:var(--c-text);">{{ integration.name }}</div>
+        <div class="cell-s" style="margin-top:4px;max-width:260px;">
+          {% if integration.provider == "oidc" %}Browser SSO, domain-restricted login, and device enrollment authorization.
+          {% elif integration.provider == "saml" %}Enterprise SSO bridge for IdP-initiated and SP-initiated authentication.
+          {% else %}Directory user and group lifecycle sync for RBAC and access grants.{% endif %}
+        </div>
+      </div>
+      {% if integration.enabled %}
+        <span class="sbadge sbadge-green" style="flex-shrink:0;"><span class="sbadge-dot"></span>enabled</span>
+      {% else %}
+        <span class="sbadge sbadge-muted" style="flex-shrink:0;"><span class="sbadge-dot"></span>disabled</span>
+      {% endif %}
+    </div>
+
+    <div style="padding:16px 20px;flex:1;">
+      <form method="post" action="{{ url_for('admin.settings_integration_update', provider=integration.provider) }}">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;">
+          <div style="position:relative;width:38px;height:22px;flex-shrink:0;">
+            <input type="checkbox" name="enabled" {% if integration.enabled %}checked{% endif %} style="opacity:0;width:0;height:0;position:absolute;" onchange="this.closest('label').nextElementSibling && void 0">
+            <span style="position:absolute;inset:0;border-radius:22px;background:{% if integration.enabled %}var(--c-blue){% else %}var(--c-s4){% endif %};transition:background var(--t-base);cursor:pointer;" onclick="var cb=this.previousElementSibling;cb.checked=!cb.checked;this.style.background=cb.checked?'var(--c-blue)':'var(--c-s4)';"></span>
+            <span style="position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform var(--t-base);transform:{% if integration.enabled %}translateX(16px){% else %}translateX(0){% endif %};pointer-events:none;"></span>
+          </div>
+          <span style="font-size:12px;color:var(--c-text-2);">Allow this integration to authorize platform access</span>
+        </label>
+
+        {% for field in integration.fields %}
+        <div class="form-group">
+          <label class="form-label">{{ field | replace("_", " ") | title }}</label>
+          <input
+            class="form-input"
+            name="{{ field }}"
+            type="{{ 'password' if field in integration.secret_fields else 'text' }}"
+            value="{{ '' if field in integration.secret_fields else integration.settings.get(field, '') }}"
+            placeholder="{% if field == 'issuer_url' %}https://idp.example.com{% elif field == 'metadata_url' %}https://idp.example.com/metadata{% elif field == 'scopes' %}openid email profile groups{% elif field == 'sync_groups' %}admins, engineers, sre{% endif %}">
+          {% if field in integration.secret_fields and integration.settings.get(field) %}
+          <div class="cell-s" style="margin-top:4px;color:var(--c-text-3);">Secret is configured. Leave blank to keep current value.</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <span class="tag">{{ integration.status }}</span>
+          <button class="btn btn-primary btn-sm" type="submit">Save Settings</button>
+        </div>
+      </form>
+    </div>
+
+    <div style="padding:10px 20px;border-top:1px solid var(--c-border);background:var(--c-s2);border-radius:0 0 10px 10px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <div class="cell-s">Test: <span style="color:var(--c-text-2);">{{ integration.last_test_at or "never" }}</span></div>
+        <div class="cell-s">Sync: <span style="color:var(--c-text-2);">{{ integration.last_sync_at or "never" }}</span></div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <form method="post" action="{{ url_for('admin.settings_integration_test', provider=integration.provider) }}" style="display:inline;">
+          <button class="btn btn-ghost btn-sm" type="submit" {% if not integration.enabled %}disabled{% endif %}>Test</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.settings_integration_sync', provider=integration.provider) }}" style="display:inline;">
+          <button class="btn btn-ghost btn-sm" type="submit" {% if not integration.enabled %}disabled{% endif %} style="color:var(--c-blue);border-color:rgba(59,130,246,.3);">Sync</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <!-- SSH Certificate Authority -->
+  <div class="col-xl-6">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">SSH Certificate Authority</div>
+          <div class="s-card-sub">OpenSSH CA configuration and certificate policy</div>
+        </div>
+        <span class="tag" style="background:rgba(59,130,246,.1);color:var(--c-blue);border-color:rgba(59,130,246,.2);">OpenSSH CA</span>
+      </div>
+      <div style="padding:0 20px 20px;display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;align-items:baseline;">
+        <span class="cell-s">CA key path</span>
+        <span class="code-block" style="font-size:11px;padding:3px 8px;display:inline-block;">{{ config.SSH_CA_KEY_PATH }}</span>
+        <span class="cell-s">Cert TTL</span>
+        <span style="font-size:13px;color:var(--c-text);">{{ config.SSH_CERT_TTL_SECONDS }} seconds</span>
+        <span class="cell-s">Replay window</span>
+        <span style="font-size:13px;color:var(--c-text);">{{ config.CERT_REQUEST_REPLAY_WINDOW_SECONDS }} seconds</span>
+        <span class="cell-s">Trusted CA endpoint</span>
+        <span class="code-block" style="font-size:11px;padding:3px 8px;display:inline-block;">/api/v1/servers/trusted-user-ca</span>
+        <span class="cell-s">Revocation endpoint</span>
+        <span class="code-block" style="font-size:11px;padding:3px 8px;display:inline-block;">/api/v1/servers/revocation-state</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform Hardening -->
+  <div class="col-xl-6">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Platform Access &amp; Hardening</div>
+          <div class="s-card-sub">Authentication controls, rate limiting, and security headers</div>
+        </div>
+        <span class="tag" style="background:rgba(16,185,129,.1);color:var(--c-green);border-color:rgba(16,185,129,.2);">Headers enabled</span>
+      </div>
+      <div style="padding:0 20px 20px;display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;align-items:baseline;">
+        <span class="cell-s">Local auth</span>
+        <span style="font-size:13px;">
+          {% if config.LOCAL_AUTH_ENABLED %}
+            <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>enabled</span>
+          {% else %}
+            <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>disabled</span>
+          {% endif %}
+        </span>
+        <span class="cell-s">Dev login</span>
+        <span style="font-size:13px;">
+          {% if config.DEV_AUTH_ENABLED %}
+            <span class="sbadge sbadge-amber"><span class="sbadge-dot"></span>enabled</span>
+          {% else %}
+            <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>disabled</span>
+          {% endif %}
+        </span>
+        <span class="cell-s">Allowed domains</span>
+        <span style="font-size:13px;color:var(--c-text);">{{ config.ALLOWED_LOGIN_DOMAINS | join(", ") or "Any domain" }}</span>
+        <span class="cell-s">Rate limit window</span>
+        <span style="font-size:13px;color:var(--c-text);">{{ config.RATE_LIMIT_WINDOW_SECONDS }} seconds</span>
+        <span class="cell-s">Rate limit max</span>
+        <span style="font-size:13px;color:var(--c-text);">{{ config.RATE_LIMIT_MAX_REQUESTS }} requests</span>
+        <span class="cell-s">Callback policy</span>
+        <span style="font-size:13px;color:var(--c-text);">localhost-only browser callback</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

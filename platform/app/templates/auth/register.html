@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block title %}Create Account{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <div class="auth-logo">
+    <img src="{{ url_for('static', filename='brand/keyward-logo-no-text-transparent.png') }}" alt="Keyward">
+  </div>
+  <div class="auth-title">Create your account</div>
+  <div class="auth-sub">Register to access Keyward</div>
+
+  <form method="POST" action="{{ url_for('auth.register_post') }}">
+    <div class="form-group">
+      <label class="form-label">Email <span style="color:var(--c-red);">*</span></label>
+      <input class="form-input" name="email" type="email" required placeholder="you@example.com" autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Display Name</label>
+      <input class="form-input" name="display_name" placeholder="Your name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password <span style="color:var(--c-red);">*</span></label>
+      <input class="form-input" name="password" type="password" required placeholder="Choose a strong password">
+    </div>
+    <button class="btn-primary" type="submit" style="width:100%;justify-content:center;margin-top:4px;">Create Account</button>
+  </form>
+
+  <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--c-s4);">
+    Already have an account?
+    <a href="{{ url_for('auth.login') }}" style="color:var(--c-blue);">Sign in</a>
+  </div>
+</div>
+{% endblock %}

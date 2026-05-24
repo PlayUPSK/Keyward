@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+
+  - package-ecosystem: pip
+    directory: /platform
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:15"
+
+  - package-ecosystem: gomod
+    directory: /agents/device-client
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:30"
+
+  - package-ecosystem: gomod
+    directory: /agents/server-agent
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:45"

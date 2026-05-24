@@ -1,0 +1,362 @@
+{% extends "admin/base.html" %}
+{% block title %}Policies &amp; Grants{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Policies &amp; Grants</h1>
+    <p class="page-sub">Access control rules, certificate constraints, and per-subject grants.</p>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Left: Create forms -->
+  <div class="col-xl-5">
+
+    <!-- Create Policy -->
+    <div class="s-card mb-3">
+      <div class="s-card-head"><div class="s-card-title">Create Policy</div></div>
+      <div style="padding:0 20px 20px;">
+        <form method="post" action="{{ url_for('admin.policies_create') }}">
+          <div class="form-group">
+            <label class="form-label">Policy Name</label>
+            <input class="form-input" name="name" placeholder="e.g. allow-trusted-prod" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Effect</label>
+              <select class="form-select-input" name="effect" data-policy-effect>
+                <option value="allow">Allow</option>
+                <option value="deny">Deny</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <input class="form-input" name="priority" type="number" value="1000">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Device Status</label>
+              <select class="form-select-input" name="device_status">
+                <option value="">Any</option>
+                {% for s in device_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Server Environment</label>
+              <select class="form-select-input" name="server_environment">
+                <option value="">Any</option>
+                {% for e in server_environments %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">SSH Principal</label>
+              <input class="form-input" name="ssh_principal" placeholder="alice">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Source IP</label>
+              <input class="form-input" name="source_ip" placeholder="10.0.0.0/8">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Server Tag Key</label>
+              <input class="form-input" name="server_tag_key" placeholder="env">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Server Tag Value</label>
+              <input class="form-input" name="server_tag_value" placeholder="prod">
+            </div>
+          </div>
+
+          <!-- Allow settings -->
+          <div style="background:var(--c-s2);border:1px solid var(--c-border);border-radius:8px;padding:14px;margin-bottom:12px;" data-allow-settings>
+            <div class="cell-s" style="text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Certificate Constraints</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">TTL (seconds)</label>
+                <input class="form-input" name="ttl_seconds" type="number" value="300" min="1">
+              </div>
+              <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding-bottom:2px;">
+                  <input type="checkbox" name="enabled" checked style="accent-color:var(--c-blue);"> Enabled
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-2);cursor:pointer;"><input type="checkbox" name="permit_pty" checked style="accent-color:var(--c-blue);"> Permit PTY</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-2);cursor:pointer;"><input type="checkbox" name="permit_agent_forwarding" style="accent-color:var(--c-blue);"> Agent Forwarding</label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c-text-2);cursor:pointer;"><input type="checkbox" name="permit_x11_forwarding" style="accent-color:var(--c-blue);"> X11 Forwarding</label>
+            </div>
+          </div>
+
+          <!-- Deny settings -->
+          <div style="background:var(--c-s2);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:14px;margin-bottom:12px;display:none;" data-deny-settings>
+            <div class="cell-s" style="text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;color:var(--c-red);">Deny Configuration</div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Deny Reason</label>
+              <input class="form-input" name="deny_reason" value="policy_denied" placeholder="Deny reason code">
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-sm" type="submit">Create Policy</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Create Access Grant -->
+    <div class="s-card">
+      <div class="s-card-head"><div class="s-card-title">Create Access Grant</div></div>
+      <div style="padding:0 20px 20px;">
+        <form method="post" action="{{ url_for('admin.access_grants_create') }}">
+          <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Subject Type</label>
+              <select class="form-select-input" name="subject_type" data-subject-type>
+                <option value="user">User</option>
+                <option value="group">Group</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Subject</label>
+              <select class="form-select-input" name="subject_id" data-subject-id required>
+                <option value="" disabled selected>Select user</option>
+                {% for option in subject_options.user %}
+                <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Scope Type</label>
+              <select class="form-select-input" name="server_scope_type" data-scope-type>
+                <option value="server">Server</option>
+                <option value="server_group">Server Group</option>
+                <option value="all">All Enrolled</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Scope Target</label>
+              <select class="form-select-input" name="server_scope_id" data-scope-id>
+                <option value="" disabled selected>Select server</option>
+                {% for option in scope_options.server %}
+                <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unix Principals (comma-separated)</label>
+            <input class="form-input" name="unix_principals" placeholder="alice,deploy,root" required>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Valid From</label>
+              <input class="form-input" type="datetime-local" name="valid_from">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valid Until</label>
+              <input class="form-input" type="datetime-local" name="valid_until">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit">Create Grant</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Tables -->
+  <div class="col-xl-7">
+
+    <!-- Policies table -->
+    <div class="s-card mb-3">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Policies</div>
+          <div class="s-card-sub">{{ policies | length }} access control rule{{ 's' if policies | length != 1 else '' }}</div>
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Policy</th>
+              <th>Conditions</th>
+              <th>Actions</th>
+              <th>Status</th>
+              <th style="text-align:right;">Manage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for policy in policies %}
+            {% set conditions = policy.conditions or {} %}
+            {% set actions = policy.actions or {} %}
+            {% set constraints = actions.constraints or {} %}
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ policy.name }}</div>
+                <div class="cell-m">
+                  <span class="tag {% if policy.effect == 'deny' %}tag-danger{% endif %}">{{ policy.effect }}</span>
+                  &middot; priority {{ policy.priority }}
+                </div>
+              </td>
+              <td>
+                {% if conditions %}
+                  <div class="cell-s">device: {{ conditions.device_status or 'any' }}</div>
+                  <div class="cell-s">env: {{ conditions.server_environment or 'any' }}</div>
+                  {% if conditions.ssh_principal %}<div class="cell-s">principal: {{ conditions.ssh_principal }}</div>{% endif %}
+                  {% if conditions.source_ip %}<div class="cell-s">ip: {{ conditions.source_ip }}</div>{% endif %}
+                {% else %}
+                  <span class="cell-s" style="color:var(--c-text-3);">No conditions</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if policy.effect == 'allow' %}
+                  <div class="cell-s">TTL: {{ actions.ttl_seconds or 300 }}s</div>
+                  <div class="cell-s">pty={{ 'on' if constraints.permit_pty else 'off' }}, agent={{ 'on' if constraints.permit_agent_forwarding else 'off' }}</div>
+                {% else %}
+                  <div class="cell-s">reason: {{ actions.reason or 'policy_denied' }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {% if policy.invalidated %}
+                  <span class="sbadge sbadge-red"><span class="sbadge-dot"></span>invalidated</span>
+                  {% if policy.invalidated_reason %}<div class="cell-s" style="margin-top:4px;">{{ policy.invalidated_reason }}</div>{% endif %}
+                {% elif policy.enabled %}
+                  <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>enabled</span>
+                {% else %}
+                  <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>disabled</span>
+                {% endif %}
+                <div class="cell-s" style="margin-top:4px;">{{ policy.updated_at }}</div>
+              </td>
+              <td style="text-align:right;">
+                <div style="display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+                  <form method="post" action="{{ url_for('admin.policies_toggle', policy_id=policy.id) }}" style="display:inline;">
+                    <input type="hidden" name="enabled" value="{{ '0' if policy.enabled else '1' }}">
+                    <button class="btn btn-ghost btn-sm" type="submit">{{ 'Disable' if policy.enabled else 'Enable' }}</button>
+                  </form>
+                  {% if not policy.invalidated %}
+                  <form method="post" action="{{ url_for('admin.policies_invalidate', policy_id=policy.id) }}" style="display:inline;">
+                    <input type="hidden" name="reason" value="admin_policy_invalidation">
+                    <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--c-amber);border-color:rgba(245,158,11,.3);">Invalidate</button>
+                  </form>
+                  {% endif %}
+                  <form method="post" action="{{ url_for('admin.policies_delete', policy_id=policy.id) }}" style="display:inline;">
+                    <button class="btn btn-ghost btn-sm btn-danger" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="dt-empty">No policies created yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Access Grants table -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Access Grants</div>
+          <div class="s-card-sub">{{ access_grants | length }} active grant{{ 's' if access_grants | length != 1 else '' }}</div>
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Scope</th>
+              <th>Principals</th>
+              <th>Window</th>
+              <th style="text-align:right;">Manage</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for grant in access_grants %}
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ grant.subject_name or grant.subject_id }}</div>
+                <div class="cell-s">{{ grant.subject_type | capitalize }}</div>
+              </td>
+              <td>
+                <div style="font-size:12px;color:var(--c-text);">{{ grant.server_scope_name or grant.server_scope_id or 'All enrolled servers' }}</div>
+                <div class="cell-s">{{ grant.server_scope_type | replace('_', ' ') }}</div>
+              </td>
+              <td><span class="cell-m">{{ grant.unix_principals | join(', ') }}</span></td>
+              <td>
+                <div class="cell-s">from {{ grant.valid_from or 'now' }}</div>
+                <div class="cell-s">until {{ grant.valid_until or 'open-ended' }}</div>
+              </td>
+              <td style="text-align:right;">
+                <form method="post" action="{{ url_for('admin.access_grants_delete', grant_id=grant.id) }}" style="display:inline;">
+                  <button class="btn btn-ghost btn-sm btn-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="dt-empty">No access grants created yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  (() => {
+    const subjectOptions = {{ subject_options | tojson }};
+    const scopeOptions = {{ scope_options | tojson }};
+
+    const populate = (select, options, placeholder) => {
+      select.innerHTML = '';
+      const ph = document.createElement('option');
+      ph.value = ''; ph.textContent = placeholder; ph.disabled = true; ph.selected = true;
+      select.appendChild(ph);
+      options.forEach((opt) => {
+        const el = document.createElement('option');
+        el.value = opt.value; el.textContent = opt.label;
+        select.appendChild(el);
+      });
+    };
+
+    const subjectType = document.querySelector('[data-subject-type]');
+    const subjectId = document.querySelector('[data-subject-id]');
+    const scopeType = document.querySelector('[data-scope-type]');
+    const scopeId = document.querySelector('[data-scope-id]');
+    const effectSelect = document.querySelector('[data-policy-effect]');
+    const allowSettings = document.querySelector('[data-allow-settings]');
+    const denySettings = document.querySelector('[data-deny-settings]');
+
+    const syncSubject = () => populate(subjectId, subjectOptions[subjectType.value] || [], `Select ${subjectType.value}`);
+    const syncScope = () => {
+      if (scopeType.value === 'all') {
+        scopeId.innerHTML = '<option value="">Not required</option>';
+        scopeId.disabled = true; return;
+      }
+      scopeId.disabled = false;
+      populate(scopeId, scopeOptions[scopeType.value] || [], `Select ${scopeType.value.replace('_', ' ')}`);
+    };
+    const syncEffect = () => {
+      const deny = effectSelect.value === 'deny';
+      allowSettings.style.display = deny ? 'none' : '';
+      denySettings.style.display = deny ? '' : 'none';
+    };
+
+    syncSubject(); syncScope(); syncEffect();
+    subjectType.addEventListener('change', syncSubject);
+    scopeType.addEventListener('change', syncScope);
+    effectSelect.addEventListener('change', syncEffect);
+  })();
+</script>
+{% endblock %}
+{% endblock %}

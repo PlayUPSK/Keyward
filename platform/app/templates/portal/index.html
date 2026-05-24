@@ -1,0 +1,170 @@
+{% extends "layout.html" %}
+{% block title %}My Access Portal{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--c-blue);margin-bottom:4px;">My Access Portal</div>
+    <h1 class="page-title">{{ current_user.display_name or current_user.email }}</h1>
+    <div class="page-sub">{{ current_user.email }}</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn-ghost" href="{{ url_for('portal.approve_device') }}">Approve Device</a>
+    <a class="btn-primary" href="{{ url_for('portal.enroll_device') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0;"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+      Enroll Device
+    </a>
+  </div>
+</div>
+
+<!-- Stats row -->
+<div class="metric-grid" style="margin-bottom:24px;">
+  <div class="metric-tile">
+    <div class="metric-icon mi-blue">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+    </div>
+    <div>
+      <div class="metric-val">{{ servers|length }}</div>
+      <div class="metric-label">Accessible Servers</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-green">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </div>
+    <div>
+      <div class="metric-val">{{ devices|selectattr('status','equalto','trusted')|list|length }}</div>
+      <div class="metric-label">Trusted Devices</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-purple">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+    </div>
+    <div>
+      <div class="metric-val">{{ devices|length }}</div>
+      <div class="metric-label">Enrolled Devices</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content: two columns using CSS grid to avoid Bootstrap dependency issues -->
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+
+  <!-- SSH Access -->
+  <div class="s-card">
+    <div class="s-card-head">
+      <div>
+        <div class="s-card-title">SSH Access</div>
+        <div class="s-card-sub">Servers accessible via keywardenticated SSH certificates</div>
+      </div>
+      <input class="form-filter" type="text" placeholder="Filter servers…" data-filter-input data-filter-target="#access-tbody tr">
+    </div>
+    {% if servers %}
+    <div class="dt-wrap">
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Hostname</th>
+            <th>Environment</th>
+            <th>Status</th>
+            <th>Unix Principals</th>
+            <th>SSH Command</th>
+          </tr>
+        </thead>
+        <tbody id="access-tbody">
+          {% for srv in servers %}
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:#e8eaed;">{{ srv.hostname }}</td>
+            <td>{% if srv.environment %}<span class="tag">{{ srv.environment }}</span>{% else %}<span style="color:var(--c-s3);">—</span>{% endif %}</td>
+            <td>
+              {% if srv.status == 'enrolled' %}<span class="sbadge sbadge-green">Enrolled</span>
+              {% elif srv.status == 'decommissioned' %}<span class="sbadge sbadge-muted">Decommissioned</span>
+              {% else %}<span class="sbadge">{{ srv.status }}</span>{% endif %}
+            </td>
+            <td>
+              {% for p in srv.principals %}<span class="tag" style="margin:1px;">{{ p }}</span>{% endfor %}
+            </td>
+            <td>
+              <span class="code-block" style="font-size:11px;padding:3px 7px;white-space:nowrap;">ssh {{ srv.principals[0] if srv.principals else 'user' }}@{{ srv.hostname }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="dt-empty">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;color:var(--c-s3);margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+      No servers accessible yet.
+      <div style="font-size:12px;color:var(--c-s3);margin-top:4px;">Contact an administrator to request access grants.</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right column -->
+  <div style="display:flex;flex-direction:column;gap:20px;">
+
+    <!-- My Devices -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">My Devices</div>
+          <div class="s-card-sub">Enrolled devices on your account</div>
+        </div>
+        <a class="btn-ghost" href="{{ url_for('portal.enroll_device') }}" style="font-size:12px;">+ Enroll</a>
+      </div>
+      {% if devices %}
+      <div style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:6px;">
+        {% for device in devices %}
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;color:#e8eaed;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ device.name }}</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ device.platform }}{% if device.hardware_backed %} · HW-backed{% endif %}</div>
+          </div>
+          {% if device.status == 'trusted' %}<span class="sbadge sbadge-green">Trusted</span>
+          {% elif device.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>
+          {% elif device.status == 'revoked' %}<span class="sbadge sbadge-red">Revoked</span>
+          {% else %}<span class="sbadge sbadge-muted">{{ device.status }}</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="dt-empty" style="padding:24px 16px;">
+        No devices enrolled.
+        <a href="{{ url_for('portal.enroll_device') }}" style="font-size:12px;color:var(--c-blue);margin-top:6px;display:block;">Enroll your first device →</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Access Health -->
+    <div class="s-card">
+      <div class="s-card-head">
+        <div class="s-card-title">Access Health</div>
+      </div>
+      <div style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:6px;">
+        {% set trusted_count = devices|selectattr('status','equalto','trusted')|list|length %}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="font-size:13px;color:var(--c-s4);">Session</div>
+          <span class="sbadge sbadge-green">Active</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="font-size:13px;color:var(--c-s4);">Trusted Devices</div>
+          {% if trusted_count > 0 %}<span class="sbadge sbadge-green">{{ trusted_count }}</span>
+          {% else %}<span class="sbadge sbadge-amber">None</span>{% endif %}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="font-size:13px;color:var(--c-s4);">Server Grants</div>
+          {% if servers|length > 0 %}<span class="sbadge sbadge-green">{{ servers|length }}</span>
+          {% else %}<span class="sbadge sbadge-muted">0</span>{% endif %}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:8px;">
+          <div style="font-size:13px;color:var(--c-s4);">Policies Active</div>
+          <span class="sbadge sbadge-blue">Enforced</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

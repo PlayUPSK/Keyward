@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Keyward{% endblock %} — Access Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      /* ── Design Tokens ─────────────────────────────────── */
+      :root {
+        --c-bg:         #060a12;
+        --c-bg-alt:     #080d18;
+        --c-s1:         #0d1524;
+        --c-s2:         #111b2e;
+        --c-s3:         #172236;
+        --c-s4:         #1d2b42;
+        --c-border:     rgba(255,255,255,0.055);
+        --c-border-mid: rgba(255,255,255,0.09);
+        --c-border-hi:  rgba(255,255,255,0.16);
+        --c-text:       #dbe6f5;
+        --c-text-2:     #7e96b5;
+        --c-text-3:     #3f526e;
+        --c-blue:       #3b82f6;
+        --c-blue-dim:   rgba(59,130,246,0.13);
+        --c-green:      #10b981;
+        --c-green-dim:  rgba(16,185,129,0.12);
+        --c-amber:      #f59e0b;
+        --c-amber-dim:  rgba(245,158,11,0.12);
+        --c-red:        #ef4444;
+        --c-red-dim:    rgba(239,68,68,0.12);
+        --c-purple:     #8b5cf6;
+        --c-purple-dim: rgba(139,92,246,0.12);
+        --c-cyan:       #06b6d4;
+        --c-cyan-dim:   rgba(6,182,212,0.12);
+        --sidebar-w:    240px;
+        --topbar-h:     54px;
+        --font:         'Inter', ui-sans-serif, system-ui, sans-serif;
+        --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px;
+        --t-fast: 100ms ease; --t-base: 160ms ease;
+        --t-slow: 280ms cubic-bezier(0.4,0,0.2,1);
+      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { background: var(--c-bg); color: var(--c-text); font-family: var(--font); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+      a { color: inherit; text-decoration: none; }
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+
+      /* ── App Shell ──────────────────────────────────────── */
+      .app-shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+
+      /* ── Sidebar ────────────────────────────────────────── */
+      .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; background: var(--c-bg-alt); border-right: 1px solid var(--c-border); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; z-index: 200; }
+      .sidebar-logo { display: flex; align-items: center; gap: 11px; padding: 18px 14px 15px; border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+      .sidebar-logo-mark { width: 30px; height: 30px; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(59,130,246,0.38); }
+      .sidebar-logo-mark svg { width: 15px; height: 15px; color: #fff; }
+      .sidebar-logo-name { font-size: 13px; font-weight: 700; color: var(--c-text); letter-spacing: -0.01em; line-height: 1.2; }
+      .sidebar-logo-tag { font-size: 10px; font-weight: 500; color: var(--c-text-3); letter-spacing: 0.05em; text-transform: uppercase; }
+      .sidebar-section { padding: 14px 10px 4px; }
+      .sidebar-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-3); padding: 0 8px 7px; }
+      .sidebar-sep { height: 1px; background: var(--c-border); margin: 6px 14px; }
+      .nav-link { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--r-md); color: var(--c-text-2); font-size: 13px; font-weight: 500; margin-bottom: 1px; transition: background var(--t-fast), color var(--t-fast); position: relative; }
+      .nav-link:hover { background: rgba(255,255,255,0.045); color: var(--c-text); }
+      .nav-link.active { background: var(--c-blue-dim); color: var(--c-blue); }
+      .nav-link.active::before { content: ''; position: absolute; left: 0; top: 22%; bottom: 22%; width: 2px; background: var(--c-blue); border-radius: 0 2px 2px 0; }
+      .nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.65; }
+      .nav-link.active .nav-icon, .nav-link:hover .nav-icon { opacity: 1; }
+      .sidebar-footer { margin-top: auto; border-top: 1px solid var(--c-border); padding: 10px; flex-shrink: 0; }
+      .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-md); }
+      .user-avatar { width: 28px; height: 28px; background: linear-gradient(135deg, var(--c-blue) 0%, var(--c-purple) 100%); border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+      .user-info { flex: 1; min-width: 0; }
+      .user-name  { font-size: 12px; font-weight: 600; color: var(--c-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .user-email { font-size: 10px; color: var(--c-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .btn-signout { background: none; border: 1px solid var(--c-border); border-radius: var(--r-sm); color: var(--c-text-3); cursor: pointer; padding: 4px 7px; display: flex; align-items: center; justify-content: center; transition: all var(--t-fast); flex-shrink: 0; }
+      .btn-signout:hover { background: var(--c-red-dim); border-color: rgba(239,68,68,0.3); color: var(--c-red); }
+      .btn-signout svg { width: 12px; height: 12px; }
+
+      /* ── Main Content ────────────────────────────────────── */
+      .main-content { grid-column: 2; min-height: 100vh; display: flex; flex-direction: column; }
+
+      /* ── Topbar ──────────────────────────────────────────── */
+      .topbar { height: var(--topbar-h); border-bottom: 1px solid var(--c-border); display: flex; align-items: center; gap: 10px; padding: 0 24px; position: sticky; top: 0; background: rgba(6,10,18,0.88); backdrop-filter: blur(14px); z-index: 100; flex-shrink: 0; }
+      .topbar-search { display: flex; align-items: center; gap: 8px; background: var(--c-s1); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: 6px 12px; cursor: pointer; transition: border-color var(--t-fast); width: 220px; }
+      .topbar-search:hover { border-color: var(--c-border-mid); }
+      .topbar-search svg { width: 13px; height: 13px; color: var(--c-text-3); flex-shrink: 0; }
+      .topbar-search-text { font-size: 12px; color: var(--c-text-3); flex: 1; }
+      .topbar-kbd { display: flex; gap: 2px; flex-shrink: 0; }
+      .topbar-kbd kbd { background: var(--c-s3); border: 1px solid var(--c-border-mid); border-radius: 4px; color: var(--c-text-3); font-size: 10px; font-family: var(--font); padding: 0 5px; line-height: 1.8; }
+      .topbar-spacer { flex: 1; }
+      .topbar-btn { width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid var(--c-border); background: var(--c-s1); color: var(--c-text-2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all var(--t-fast); text-decoration: none; }
+      .topbar-btn:hover { background: var(--c-s2); border-color: var(--c-border-mid); color: var(--c-text); }
+      .topbar-btn svg { width: 14px; height: 14px; }
+      .topbar-toggle { width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid var(--c-border); background: var(--c-s1); color: var(--c-text-2); display: none; align-items: center; justify-content: center; cursor: pointer; }
+      .topbar-toggle svg { width: 17px; height: 17px; }
+
+      /* ── Flash Messages ──────────────────────────────────── */
+      .flash-stack { padding: 14px 24px 0; }
+      .flash-item { display: flex; align-items: center; gap: 10px; padding: 11px 15px; border-radius: var(--r-lg); font-size: 13px; font-weight: 500; border: 1px solid transparent; margin-bottom: 8px; animation: flashIn .2s ease; }
+      @keyframes flashIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+      .flash-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+      .flash-success { background: var(--c-green-dim); border-color: rgba(16,185,129,.22); color: #34d399; }
+      .flash-danger, .flash-error { background: var(--c-red-dim); border-color: rgba(239,68,68,.22); color: #f87171; }
+      .flash-warning { background: var(--c-amber-dim); border-color: rgba(245,158,11,.22); color: #fcd34d; }
+      .flash-info, .flash-message { background: var(--c-blue-dim); border-color: rgba(59,130,246,.22); color: #93c5fd; }
+
+      /* ── Page Body ───────────────────────────────────────── */
+      .page-body { flex: 1; padding: 28px 24px; }
+      .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+      .page-title { font-size: 20px; font-weight: 700; color: var(--c-text); letter-spacing: -0.025em; line-height: 1.25; margin: 0 0 4px; }
+      .page-sub { font-size: 13px; color: var(--c-text-2); margin: 0; }
+      .page-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+      /* ── Metric Grid ─────────────────────────────────────── */
+      .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 28px; }
+      .metric-tile { background: var(--c-s1); border: 1px solid var(--c-border); border-radius: var(--r-xl); padding: 18px 20px; position: relative; overflow: hidden; transition: border-color var(--t-base), box-shadow var(--t-base); }
+      .metric-tile:hover { border-color: var(--c-border-mid); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+      .metric-tile::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.055), transparent); }
+      .metric-icon { width: 34px; height: 34px; border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+      .metric-icon svg { width: 17px; height: 17px; }
+      .mi-blue   { background: var(--c-blue-dim);   color: var(--c-blue);   }
+      .mi-green  { background: var(--c-green-dim);  color: var(--c-green);  }
+      .mi-amber  { background: var(--c-amber-dim);  color: var(--c-amber);  }
+      .mi-red    { background: var(--c-red-dim);    color: var(--c-red);    }
+      .mi-purple { background: var(--c-purple-dim); color: var(--c-purple); }
+      .mi-cyan   { background: var(--c-cyan-dim);   color: var(--c-cyan);   }
+      .metric-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-3); margin-bottom: 5px; }
+      .metric-value { font-size: 26px; font-weight: 700; color: var(--c-text); letter-spacing: -0.04em; line-height: 1; margin-bottom: 5px; }
+      .metric-desc  { font-size: 11px; color: var(--c-text-3); }
+
+      /* ── Surface Card ────────────────────────────────────── */
+      .s-card { background: var(--c-s1); border: 1px solid var(--c-border); border-radius: var(--r-xl); overflow: hidden; }
+      .s-card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--c-border); gap: 12px; }
+      .s-card-title { font-size: 13px; font-weight: 600; color: var(--c-text); }
+      .s-card-sub { font-size: 11px; color: var(--c-text-3); margin-top: 1px; }
+      .s-card-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+      .s-card-body { padding: 20px; }
+
+      /* ── Data Table ──────────────────────────────────────── */
+      .dt-wrap { overflow-x: auto; }
+      .dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .dt thead th { padding: 9px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-3); background: var(--c-s2); border-bottom: 1px solid var(--c-border); white-space: nowrap; }
+      .dt thead th:first-child { padding-left: 20px; } .dt thead th:last-child { padding-right: 20px; }
+      .dt tbody td { padding: 11px 16px; border-bottom: 1px solid var(--c-border); vertical-align: middle; }
+      .dt tbody td:first-child { padding-left: 20px; } .dt tbody td:last-child { padding-right: 20px; }
+      .dt tbody tr:last-child td { border-bottom: none; }
+      .dt tbody tr { transition: background var(--t-fast); }
+      .dt tbody tr:hover td { background: rgba(255,255,255,0.018); }
+      .cell-p { font-weight: 600; color: var(--c-text); margin-bottom: 2px; }
+      .cell-s { font-size: 11px; color: var(--c-text-3); }
+      .cell-m { font-family: var(--font-mono); font-size: 11px; color: var(--c-text-2); }
+      .dt-empty { padding: 52px 20px; text-align: center; color: var(--c-text-3); font-size: 13px; }
+      .expand-row td { background: var(--c-s2) !important; padding: 0 !important; border-bottom: 1px solid var(--c-border) !important; }
+      .expand-inner { padding: 20px; }
+
+      /* ── Status Badges ───────────────────────────────────── */
+      .sbadge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+      .sbadge-dot { width: 5px; height: 5px; border-radius: 99px; flex-shrink: 0; }
+      .sbadge-green  { background: var(--c-green-dim);  color: var(--c-green);  border-color: rgba(16,185,129,.2);  } .sbadge-green  .sbadge-dot { background: var(--c-green);  box-shadow: 0 0 5px var(--c-green);  }
+      .sbadge-amber  { background: var(--c-amber-dim);  color: var(--c-amber);  border-color: rgba(245,158,11,.2);  } .sbadge-amber  .sbadge-dot { background: var(--c-amber);  }
+      .sbadge-red    { background: var(--c-red-dim);    color: var(--c-red);    border-color: rgba(239,68,68,.2);   } .sbadge-red    .sbadge-dot { background: var(--c-red);    }
+      .sbadge-blue   { background: var(--c-blue-dim);   color: var(--c-blue);   border-color: rgba(59,130,246,.2);  } .sbadge-blue   .sbadge-dot { background: var(--c-blue);   }
+      .sbadge-purple { background: var(--c-purple-dim); color: var(--c-purple); border-color: rgba(139,92,246,.2);  } .sbadge-purple .sbadge-dot { background: var(--c-purple); }
+      .sbadge-muted  { background: rgba(255,255,255,.04); color: var(--c-text-3); border-color: var(--c-border); } .sbadge-muted .sbadge-dot { background: var(--c-text-3); }
+
+      /* ── Tags ────────────────────────────────────────────── */
+      .tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--r-sm); font-size: 11px; font-weight: 600; background: var(--c-s3); color: var(--c-text-2); border: 1px solid var(--c-border); }
+      .tag-blue   { background: var(--c-blue-dim);   color: var(--c-blue);   border-color: rgba(59,130,246,.2);  }
+      .tag-green  { background: var(--c-green-dim);  color: var(--c-green);  border-color: rgba(16,185,129,.2);  }
+      .tag-purple { background: var(--c-purple-dim); color: var(--c-purple); border-color: rgba(139,92,246,.2);  }
+      .tag-amber  { background: var(--c-amber-dim);  color: var(--c-amber);  border-color: rgba(245,158,11,.2);  }
+      .tag-red    { background: var(--c-red-dim);    color: var(--c-red);    border-color: rgba(239,68,68,.2);   }
+      .tag-cyan   { background: var(--c-cyan-dim);   color: var(--c-cyan);   border-color: rgba(6,182,212,.2);   }
+
+      /* ── Buttons ─────────────────────────────────────────── */
+      .btn { border-radius: var(--r-md); font-weight: 600; font-size: 13px; font-family: var(--font); transition: all var(--t-fast); display: inline-flex; align-items: center; gap: 6px; }
+      .btn svg { width: 14px; height: 14px; }
+      .btn-primary { background: var(--c-blue); border-color: var(--c-blue); color: #fff; }
+      .btn-primary:hover { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,.22); }
+      .btn-ghost { background: transparent; border: 1px solid var(--c-border-mid); color: var(--c-text-2); }
+      .btn-ghost:hover { background: var(--c-s2); border-color: var(--c-border-hi); color: var(--c-text); }
+      .btn-danger-ghost { background: transparent; border: 1px solid rgba(239,68,68,.2); color: var(--c-red); }
+      .btn-danger-ghost:hover { background: var(--c-red-dim); border-color: rgba(239,68,68,.4); color: var(--c-red); }
+      .btn-success-ghost { background: transparent; border: 1px solid rgba(16,185,129,.2); color: var(--c-green); }
+      .btn-success-ghost:hover { background: var(--c-green-dim); border-color: rgba(16,185,129,.4); color: var(--c-green); }
+      .btn-amber-ghost { background: transparent; border: 1px solid rgba(245,158,11,.2); color: var(--c-amber); }
+      .btn-amber-ghost:hover { background: var(--c-amber-dim); border-color: rgba(245,158,11,.4); color: var(--c-amber); }
+
+      /* ── Forms ───────────────────────────────────────────── */
+      .form-control, .form-select { background: var(--c-s2); border: 1px solid var(--c-border-mid); border-radius: var(--r-md); color: var(--c-text); font-family: var(--font); font-size: 13px; }
+      .form-control::placeholder { color: var(--c-text-3); }
+      .form-control:focus, .form-select:focus { background: var(--c-s2); border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(59,130,246,.14); color: var(--c-text); outline: none; }
+      .form-select option { background: var(--c-s2); color: var(--c-text); }
+      .form-label { font-size: 12px; font-weight: 600; color: var(--c-text-2); margin-bottom: 6px; }
+      .form-text  { font-size: 11px; color: var(--c-text-3); }
+      .form-check-input { background-color: var(--c-s3); border-color: var(--c-border-mid); }
+      .form-check-input:checked { background-color: var(--c-blue); border-color: var(--c-blue); }
+      .form-check-input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,.14); }
+      .form-check-label { font-size: 13px; color: var(--c-text-2); }
+      .form-switch .form-check-input { background-color: var(--c-s4); }
+      .form-switch .form-check-input:checked { background-color: var(--c-blue); }
+
+      /* ── Modal ───────────────────────────────────────────── */
+      .modal-content { background: var(--c-s2); border: 1px solid var(--c-border-mid); border-radius: var(--r-2xl); }
+      .modal-header { border-bottom: 1px solid var(--c-border); padding: 20px 24px; }
+      .modal-title { color: var(--c-text); font-size: 16px; font-weight: 700; }
+      .btn-close { filter: invert(1) opacity(0.35); }
+      .btn-close:hover { filter: invert(1) opacity(0.7); }
+      .modal-body { padding: 20px 24px; }
+      .modal-footer { border-top: 1px solid var(--c-border); padding: 14px 24px; background: var(--c-s1); border-radius: 0 0 var(--r-2xl) var(--r-2xl); }
+      .modal-backdrop { background: rgba(0,0,0,0.72); }
+      .modal-backdrop.show { opacity: 1; }
+
+      /* ── Code ────────────────────────────────────────────── */
+      pre, code { font-family: var(--font-mono); }
+      .code-block { background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: 16px 20px; font-size: 12px; color: #94a3b8; white-space: pre-wrap; word-break: break-all; line-height: 1.8; }
+      .code-inline { background: var(--c-s3); border: 1px solid var(--c-border); border-radius: var(--r-sm); color: #93c5fd; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; }
+
+      /* ── Command Palette ─────────────────────────────────── */
+      .cmd-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(6px); z-index: 9999; align-items: flex-start; justify-content: center; padding-top: 15vh; }
+      .cmd-overlay.open { display: flex; }
+      .cmd-palette { background: var(--c-s2); border: 1px solid var(--c-border-mid); border-radius: var(--r-2xl); box-shadow: 0 32px 64px rgba(0,0,0,0.65); width: 540px; max-width: 95vw; overflow: hidden; animation: cmdPop .14s ease; }
+      @keyframes cmdPop { from { opacity:0; transform: scale(0.96) translateY(-10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+      .cmd-input-row { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid var(--c-border); }
+      .cmd-input-row svg { width: 16px; height: 16px; color: var(--c-text-3); flex-shrink: 0; }
+      #cmdInput { background: none; border: none; outline: none; color: var(--c-text); font-family: var(--font); font-size: 15px; flex: 1; }
+      #cmdInput::placeholder { color: var(--c-text-3); }
+      .cmd-results { max-height: 360px; overflow-y: auto; padding: 8px; }
+      .cmd-group-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--c-text-3); padding: 7px 12px 4px; }
+      .cmd-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--r-md); cursor: pointer; font-size: 13px; color: var(--c-text-2); transition: background var(--t-fast), color var(--t-fast); text-decoration: none; }
+      .cmd-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+      .cmd-item:hover, .cmd-item.sel { background: var(--c-blue-dim); color: var(--c-text); }
+      .cmd-foot { padding: 9px 16px; border-top: 1px solid var(--c-border); display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--c-text-3); }
+      .cmd-foot kbd { background: var(--c-s3); border: 1px solid var(--c-border); border-radius: 4px; padding: 1px 5px; font-family: var(--font); font-size: 10px; }
+
+      /* ── Auth Shell ──────────────────────────────────────── */
+      .auth-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px 16px; background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.12), transparent), var(--c-bg); }
+      .auth-card { background: var(--c-s1); border: 1px solid var(--c-border-mid); border-radius: var(--r-2xl); padding: 36px 40px; width: 100%; max-width: 420px; box-shadow: 0 24px 64px rgba(0,0,0,0.45); }
+      .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
+      .auth-logo-mark { width: 36px; height: 36px; background: linear-gradient(135deg, #3b82f6, #6366f1); border-radius: var(--r-lg); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(59,130,246,.38); }
+      .auth-logo-mark svg { width: 18px; height: 18px; color: #fff; }
+      .auth-logo-name { font-size: 15px; font-weight: 700; color: var(--c-text); }
+      .auth-title { font-size: 22px; font-weight: 700; color: var(--c-text); margin-bottom: 6px; letter-spacing: -0.02em; }
+      .auth-sub { font-size: 13px; color: var(--c-text-2); margin-bottom: 28px; }
+      .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; font-size: 11px; color: var(--c-text-3); }
+      .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--c-border); }
+      .auth-link { font-size: 13px; color: var(--c-blue); }
+      .auth-link:hover { color: #60a5fa; text-decoration: underline; }
+
+      /* ── Misc ────────────────────────────────────────────── */
+      .divider { height: 1px; background: var(--c-border); margin: 24px 0; }
+      .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 52px 24px; gap: 12px; text-align: center; }
+      .empty-state-icon { width: 44px; height: 44px; border-radius: var(--r-xl); background: var(--c-s3); display: flex; align-items: center; justify-content: center; color: var(--c-text-3); }
+      .empty-state-icon svg { width: 20px; height: 20px; }
+      .empty-state-title { font-size: 14px; font-weight: 600; color: var(--c-text-2); }
+      .empty-state-desc  { font-size: 12px; color: var(--c-text-3); max-width: 280px; }
+      .hdr-search { display: flex; align-items: center; gap: 8px; background: var(--c-s2); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: 5px 10px; transition: border-color var(--t-fast); }
+      .hdr-search:focus-within { border-color: var(--c-blue); }
+      .hdr-search svg { width: 12px; height: 12px; color: var(--c-text-3); flex-shrink: 0; }
+      .hdr-search input { background: none; border: none; outline: none; color: var(--c-text); font-family: var(--font); font-size: 12px; width: 160px; }
+      .hdr-search input::placeholder { color: var(--c-text-3); }
+      .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; }
+      .section-title { font-size: 14px; font-weight: 600; color: var(--c-text); }
+      .section-sub { font-size: 11px; color: var(--c-text-3); margin-top: 1px; }
+      .info-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--c-border); }
+      .info-row:last-child { border-bottom: none; }
+      .info-key { font-size: 11px; font-weight: 600; color: var(--c-text-3); min-width: 120px; }
+      .info-val { font-size: 12px; color: var(--c-text-2); }
+      pre { background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--r-lg); color: #94a3b8; padding: 16px; white-space: pre-wrap; font-size: 12px; line-height: 1.8; }
+
+      /* ── Responsive ──────────────────────────────────────── */
+      @media (max-width: 880px) {
+        .app-shell { grid-template-columns: 1fr; }
+        .sidebar { transform: translateX(-100%); transition: transform var(--t-slow); z-index: 300; }
+        .sidebar.open { transform: translateX(0); box-shadow: 0 0 0 100vw rgba(0,0,0,0.5); }
+        .main-content { grid-column: 1; }
+        .topbar-toggle { display: flex !important; }
+        .page-body { padding: 18px 16px; }
+      }
+    </style>
+    {% block head %}{% endblock %}
+  </head>
+  <body>
+
+{% if current_user %}
+<!-- ═══ Command Palette ═══ -->
+<div class="cmd-overlay" id="cmdOverlay">
+  <div class="cmd-palette">
+    <div class="cmd-input-row">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="cmdInput" placeholder="Navigate, search, jump to..." autocomplete="off">
+    </div>
+    <div class="cmd-results" id="cmdResults"></div>
+    <div class="cmd-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ App Shell ═══ -->
+<div class="app-shell">
+  <nav class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <div>
+        <div class="sidebar-logo-name">Keyward</div>
+        <div class="sidebar-logo-tag">Zero Trust SSH</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">My Access</div>
+      <a class="nav-link {% if request.endpoint == 'portal.index' %}active{% endif %}" href="{{ url_for('portal.index') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        My Portal
+      </a>
+      <a class="nav-link {% if request.endpoint == 'portal.enroll_device' %}active{% endif %}" href="{{ url_for('portal.enroll_device') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/><path d="M9 7h6"/></svg>
+        Enroll Device
+      </a>
+      <a class="nav-link {% if request.endpoint == 'portal.approve_device' %}active{% endif %}" href="{{ url_for('portal.approve_device') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        Approve Device
+      </a>
+    </div>
+
+    {% if 'admin' in current_user_roles() %}
+    <div class="sidebar-sep"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Security Center
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.audit' %}active{% endif %}" href="{{ url_for('admin.audit') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        Audit Explorer
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Access Management</div>
+      <a class="nav-link {% if request.endpoint in ['admin.users', 'admin.users_assign_role'] %}active{% endif %}" href="{{ url_for('admin.users') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </a>
+      <a class="nav-link {% if request.endpoint in ['admin.policies', 'admin.policies_create'] %}active{% endif %}" href="{{ url_for('admin.policies') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Policies &amp; Grants
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Infrastructure</div>
+      <a class="nav-link {% if request.endpoint == 'admin.servers' %}active{% endif %}" href="{{ url_for('admin.servers') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+        Servers
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.devices' %}active{% endif %}" href="{{ url_for('admin.devices') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+        Trusted Devices
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Administration</div>
+      <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings &amp; Integrations
+      </a>
+    </div>
+    {% endif %}
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">{{ (current_user.display_name or current_user.email or 'U')[0]|upper }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ current_user.display_name or current_user.email }}</div>
+          <div class="user-email">{{ current_user.email }}</div>
+        </div>
+        <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0;">
+          <button class="btn-signout" type="submit" title="Sign out">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header class="topbar">
+      <button class="topbar-toggle" id="sidebarToggle" aria-label="Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+      </button>
+      <div class="topbar-search" id="openCmd" role="button" tabindex="0">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span class="topbar-search-text">Quick navigate...</span>
+        <div class="topbar-kbd"><kbd>⌘</kbd><kbd>K</kbd></div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <a class="topbar-btn" href="{{ url_for('portal.index') }}" title="My Portal" style="text-decoration:none;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      </a>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-stack">
+        {% for category, message in messages %}
+        <div class="flash-item flash-{{ category }}">
+          {% if category == 'success' %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          {% elif category in ['danger', 'error'] %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>
+          {% elif category == 'warning' %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12.01" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          {% else %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12.01" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>{% endif %}
+          {{ message }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="page-body">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script>
+  const _nav = [
+    {% if current_user %}
+    { label: 'My Portal',         href: '{{ url_for("portal.index") }}',          svg: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',       group: 'Portal' },
+    { label: 'Enroll Device',     href: '{{ url_for("portal.enroll_device") }}',   svg: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',                                      group: 'Portal' },
+    { label: 'Approve Device',    href: '{{ url_for("portal.approve_device") }}',  svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',                           group: 'Portal' },
+    {% if 'admin' in current_user_roles() %}
+    { label: 'Security Center',   href: '{{ url_for("admin.dashboard") }}',        svg: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',                                                                        group: 'Admin'  },
+    { label: 'Users',             href: '{{ url_for("admin.users") }}',            svg: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',                          group: 'Admin'  },
+    { label: 'Policies',          href: '{{ url_for("admin.policies") }}',         svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                                      group: 'Admin'  },
+    { label: 'Servers',           href: '{{ url_for("admin.servers") }}',          svg: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/>',             group: 'Admin'  },
+    { label: 'Trusted Devices',   href: '{{ url_for("admin.devices") }}',          svg: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',                     group: 'Admin'  },
+    { label: 'Audit Explorer',    href: '{{ url_for("admin.audit") }}',            svg: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',  group: 'Admin'  },
+    { label: 'Settings',          href: '{{ url_for("admin.settings") }}',         svg: '<circle cx="12" cy="12" r="3"/>',                                                                               group: 'Admin'  },
+    {% endif %}
+    {% endif %}
+  ];
+  let _sel = 0;
+  function _openCmd() {
+    document.getElementById('cmdOverlay').classList.add('open');
+    const inp = document.getElementById('cmdInput');
+    inp.value = ''; inp.focus();
+    _renderCmd(_nav);
+  }
+  function _closeCmd() { document.getElementById('cmdOverlay').classList.remove('open'); }
+  function _renderCmd(items) {
+    const groups = {};
+    items.forEach(i => { (groups[i.group] = groups[i.group]||[]).push(i); });
+    let html = '', idx = 0;
+    for (const [grp, list] of Object.entries(groups)) {
+      html += `<div class="cmd-group-lbl">${grp}</div>`;
+      list.forEach(i => {
+        html += `<a class="cmd-item${idx===0?' sel':''}" href="${i.href}"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${i.svg}</svg>${i.label}</a>`;
+        idx++;
+      });
+    }
+    if (!html) html = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--c-text-3)">No results</div>';
+    document.getElementById('cmdResults').innerHTML = html;
+    _sel = 0;
+  }
+  document.getElementById('openCmd').addEventListener('click', _openCmd);
+  document.getElementById('cmdOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) _closeCmd(); });
+  document.getElementById('cmdInput').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    _renderCmd(q ? _nav.filter(i => i.label.toLowerCase().includes(q)||i.group.toLowerCase().includes(q)) : _nav);
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey||e.ctrlKey)&&e.key==='k') { e.preventDefault(); document.getElementById('cmdOverlay').classList.contains('open') ? _closeCmd() : _openCmd(); }
+    if (!document.getElementById('cmdOverlay').classList.contains('open')) return;
+    const items = [...document.querySelectorAll('.cmd-item')];
+    if (e.key==='Escape') _closeCmd();
+    else if (e.key==='ArrowDown') { e.preventDefault(); _sel=Math.min(_sel+1,items.length-1); items.forEach((el,i)=>el.classList.toggle('sel',i===_sel)); items[_sel]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key==='ArrowUp')   { e.preventDefault(); _sel=Math.max(_sel-1,0);              items.forEach((el,i)=>el.classList.toggle('sel',i===_sel)); items[_sel]?.scrollIntoView({block:'nearest'}); }
+    else if (e.key==='Enter')     { const s=document.querySelector('.cmd-item.sel'); if(s){window.location=s.href;_closeCmd();} }
+  });
+  // Mobile sidebar
+  const _st = document.getElementById('sidebarToggle');
+  const _sb = document.getElementById('appSidebar');
+  if (_st) {
+    _st.addEventListener('click', () => _sb.classList.toggle('open'));
+    document.addEventListener('click', e => { if(_sb.classList.contains('open')&&!_sb.contains(e.target)&&!_st.contains(e.target)) _sb.classList.remove('open'); });
+  }
+  // Auto-dismiss flash
+  setTimeout(() => {
+    document.querySelectorAll('.flash-item').forEach(el => {
+      el.style.transition = 'opacity .4s, transform .4s';
+      el.style.opacity='0'; el.style.transform='translateY(-5px)';
+      setTimeout(() => el.remove(), 400);
+    });
+  }, 5500);
+  // Table filter helper
+  document.querySelectorAll('[data-filter-input]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const t = inp.value.toLowerCase();
+      const tgt = document.querySelector(inp.dataset.filterTarget);
+      if (!tgt) return;
+      tgt.querySelectorAll('tbody tr:not(.expand-row)').forEach(row => {
+        const show = row.textContent.toLowerCase().includes(t);
+        row.style.display = show ? '' : 'none';
+        const nxt = row.nextElementSibling;
+        if (nxt?.classList.contains('expand-row')) nxt.style.display = show ? '' : 'none';
+      });
+    });
+  });
+</script>
+
+{% else %}
+<!-- ═══ Auth Shell ═══ -->
+<div class="auth-shell">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="position:fixed;top:16px;right:16px;z-index:9000;display:flex;flex-direction:column;gap:8px;max-width:360px;">
+      {% for category, message in messages %}
+      <div class="flash-item flash-{{ category }}" style="box-shadow:0 8px 24px rgba(0,0,0,0.4);">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {{ self.content() }}
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

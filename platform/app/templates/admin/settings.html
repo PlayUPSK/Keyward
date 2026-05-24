@@ -1,0 +1,187 @@
+{% extends "admin/base.html" %}
+{% block title %}Settings{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <div class="page-sub">Platform configuration, integrations, and security hardening</div>
+  </div>
+</div>
+
+<!-- Identity Provider Integrations -->
+<div class="s-card" style="margin-bottom:24px;">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Identity Provider Integrations</div>
+      <div class="s-card-sub">Connect OIDC, SAML, or SCIM for enterprise authentication and provisioning</div>
+    </div>
+  </div>
+  <div style="padding:0 20px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+    {% for integration in integrations %}
+    <div style="border:1px solid var(--c-s2);border-radius:10px;background:var(--c-s1);overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--c-s2);display:flex;align-items:center;gap:12px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--c-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;color:#e8eaed;">{{ integration.name }}</div>
+          <div style="font-size:11px;color:var(--c-s4);margin-top:1px;">provider: {{ integration.provider }}</div>
+        </div>
+        {% if integration.enabled %}<span class="sbadge sbadge-green">Enabled</span>
+        {% else %}<span class="sbadge sbadge-muted">Disabled</span>{% endif %}
+      </div>
+      <form method="POST" action="{{ url_for('admin.settings_integration_update', provider=integration.provider) }}">
+        <div style="padding:14px 18px;">
+          <!-- Toggle -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <span style="font-size:13px;color:var(--c-s4);">Enabled</span>
+            <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer;">
+              <input type="checkbox" name="enabled" value="on" {% if integration.enabled %}checked{% endif %} style="opacity:0;width:0;height:0;position:absolute;" onchange="this.closest('form').submit()">
+              <span style="position:absolute;inset:0;background:{% if integration.enabled %}var(--c-blue){% else %}var(--c-s2){% endif %};border-radius:20px;transition:.2s;"></span>
+              <span style="position:absolute;top:3px;left:{% if integration.enabled %}19px{% else %}3px{% endif %};width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s;"></span>
+            </label>
+          </div>
+          <!-- Fields -->
+          {% for field in integration.fields %}
+          <div class="form-group" style="margin-bottom:10px;">
+            <label class="form-label">{{ field.replace('_', ' ').title() }}</label>
+            {% if field in integration.secret_fields %}
+            <input class="form-input" name="{{ field }}" type="password" placeholder="••••••••" autocomplete="new-password" value="">
+            {% elif field in ['want_messages_signed', 'want_assertions_signed'] or (integration.provider == 'saml' and field in ['sync_groups', 'resolve_group_names']) %}
+            <select class="form-select-input" name="{{ field }}">
+              {% set selected = integration.settings.get(field, '') %}
+              <option value="" {% if selected == '' %}selected{% endif %}>Default{% if field == 'want_messages_signed' %} (no){% else %} (yes){% endif %}</option>
+              <option value="true" {% if selected == 'true' %}selected{% endif %}>Yes</option>
+              <option value="false" {% if selected == 'false' %}selected{% endif %}>No</option>
+            </select>
+            {% else %}
+            <input class="form-input" name="{{ field }}" value="{{ integration.settings.get(field, '') }}" placeholder="{% if field == 'issuer_url' %}https://login.microsoftonline.com/<tenant-id>/v2.0{% elif field == 'scopes' %}openid email profile{% elif field == 'email_claim' %}preferred_username{% elif field == 'name_claim' %}name{% elif field == 'groups_claim' %}groups{% elif field == 'sp_entity_id' %}Entra Identifier / Entity ID, for example a41f4267-b13d-4f41-b959-70e04bdcce0f{% elif field == 'idp_sso_url' %}https://login.microsoftonline.com/<tenant-id>/saml2{% elif field == 'nameid_format' %}urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress{% elif field == 'idp_metadata_url' %}https://login.microsoftonline.com/<tenant-id>/federationmetadata/2007-06/federationmetadata.xml{% elif field == 'graph_tenant_id' %}Microsoft tenant ID{% elif field == 'graph_client_id' %}Graph app registration client ID{% elif field == 'group_name_map' %}{&quot;group-object-id&quot;:&quot;Display Name&quot;}{% else %}{{ field.replace('_',' ') }}{% endif %}">
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% if integration.provider == 'oidc' %}
+          <div style="font-size:11px;color:var(--c-s4);line-height:1.6;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:6px;padding:8px 10px;">
+            <div>Entra redirect URI</div>
+            <div class="code-block" style="font-size:10px;word-break:break-all;">{{ url_for('auth.oidc_callback', _external=True) }}</div>
+          </div>
+          {% elif integration.provider == 'saml' %}
+          <div style="font-size:11px;color:var(--c-s4);line-height:1.6;background:var(--c-bg);border:1px solid var(--c-s2);border-radius:6px;padding:8px 10px;">
+            <div>SP metadata</div>
+            <div class="code-block" style="font-size:10px;word-break:break-all;">{{ url_for('auth.saml_metadata', _external=True) }}</div>
+            <div style="margin-top:4px;">Entra Identifier / Entity ID must exactly match “SP Entity ID” above.</div>
+            <div style="margin-top:4px;">ACS URL</div>
+            <div class="code-block" style="font-size:10px;word-break:break-all;">{{ url_for('auth.saml_acs', _external=True) }}</div>
+            <div style="margin-top:6px;">For Entra defaults, keep “Want Messages Signed” as default/no and “Want Assertions Signed” as default/yes unless your Entra signing option signs the outer response.</div>
+            <div style="margin-top:6px;">Group sync checks the configured Groups Attribute first, then common Entra/SAML attributes like <code>groups</code>, <code>roles</code>, and Microsoft claim URI names. Entra often sends group object IDs; configure Graph Tenant/Client/Secret with <code>Group.Read.All</code> application permission to resolve display names, or use Group Name Map JSON for manual mapping. Check Audit for <code>user.federated_groups_synced</code> to see what happened.</div>
+          </div>
+          {% endif %}
+        </div>
+        <div style="padding:0 18px 14px;display:flex;gap:8px;align-items:center;">
+          {% if integration.last_sync_at %}
+          <span style="font-size:11px;color:var(--c-s3);flex:1;">Synced {{ integration.last_sync_at[:10] }}</span>
+          {% elif integration.last_test_at %}
+          <span style="font-size:11px;color:var(--c-s3);flex:1;">Tested {{ integration.last_test_at[:10] }}</span>
+          {% else %}
+          <span style="flex:1;"></span>
+          {% endif %}
+          <button type="submit" class="btn-ghost" style="font-size:12px;">Save</button>
+        </div>
+      </form>
+      <div style="padding:0 18px 14px;display:flex;gap:8px;justify-content:flex-end;">
+        <form method="POST" action="{{ url_for('admin.settings_integration_test', provider=integration.provider) }}">
+          <button type="submit" class="btn-ghost" style="font-size:12px;">Test</button>
+        </form>
+        {% if integration.provider == 'scim' %}
+        <form method="POST" action="{{ url_for('admin.settings_integration_sync', provider=integration.provider) }}">
+          <button type="submit" class="btn-ghost" style="font-size:12px;">Sync</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div style="grid-column:1/-1;" class="dt-empty">No integrations configured.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- SSH CA -->
+  <div class="col-lg-6">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">SSH Certificate Authority</div>
+          <div class="s-card-sub">Short-lived certificate issuance configuration</div>
+        </div>
+      </div>
+      <div style="padding:0 20px 20px;">
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;white-space:nowrap;width:45%;">CA Key Path</th>
+            <td style="padding:10px 0;"><span class="code-block" style="font-size:11px;padding:3px 7px;">{{ config.SSH_CA_KEY_PATH }}</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Certificate TTL</th>
+            <td style="padding:10px 0;"><span class="code-block" style="font-size:11px;padding:3px 7px;">{{ config.SSH_CERT_TTL_SECONDS }}s</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Replay Window</th>
+            <td style="padding:10px 0;"><span class="code-block" style="font-size:11px;padding:3px 7px;">{{ config.CERT_REQUEST_REPLAY_WINDOW_SECONDS }}s</span></td>
+          </tr>
+          <tr>
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;vertical-align:top;">Endpoints</th>
+            <td style="padding:10px 0;">
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <span class="code-block" style="font-size:10px;padding:3px 7px;">POST /api/v1/cert/request</span>
+                <span class="code-block" style="font-size:10px;padding:3px 7px;">GET  /api/v1/cert/ca.pub</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Platform Hardening -->
+  <div class="col-lg-6">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Platform Hardening</div>
+          <div class="s-card-sub">Security controls and access restrictions</div>
+        </div>
+      </div>
+      <div style="padding:0 20px 20px;">
+        <table style="width:100%;font-size:13px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;width:55%;">Local Auth</th>
+            <td style="padding:10px 0;">
+              {% if config.LOCAL_AUTH_ENABLED %}<span class="sbadge sbadge-green">Enabled</span>
+              {% else %}<span class="sbadge sbadge-muted">Disabled</span>{% endif %}
+            </td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Dev Auth</th>
+            <td style="padding:10px 0;">
+              {% if config.DEV_AUTH_ENABLED %}<span class="sbadge sbadge-amber">Enabled</span>
+              {% else %}<span class="sbadge sbadge-green">Disabled</span>{% endif %}
+            </td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Allowed Domains</th>
+            <td style="padding:10px 0;font-size:12px;color:var(--c-s4);">{{ config.ALLOWED_LOGIN_DOMAINS|join(', ') or 'Any domain' }}</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--c-s2);">
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Rate Limit Window</th>
+            <td style="padding:10px 0;"><span class="code-block" style="font-size:11px;padding:3px 7px;">{{ config.RATE_LIMIT_WINDOW_SECONDS }}s</span></td>
+          </tr>
+          <tr>
+            <th style="padding:10px 12px 10px 0;color:var(--c-s4);font-weight:500;">Rate Limit Max</th>
+            <td style="padding:10px 0;"><span class="code-block" style="font-size:11px;padding:3px 7px;">{{ config.RATE_LIMIT_MAX_REQUESTS }} req</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

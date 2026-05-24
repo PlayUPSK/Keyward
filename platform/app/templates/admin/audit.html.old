@@ -1,0 +1,166 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Explorer{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Audit Explorer</h1>
+    <div class="page-sub">Immutable audit log of all security events</div>
+  </div>
+  <div class="page-actions">
+    <a class="btn-ghost" href="{{ url_for('admin.audit') }}">Reset Filters</a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="s-card" style="margin-bottom:20px;">
+  <div class="s-card-head">
+    <div class="s-card-title">Filters</div>
+  </div>
+  <div style="padding:0 20px 20px;">
+    <form method="GET" action="{{ url_for('admin.audit') }}">
+      <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+          <label class="form-label">Event Type</label>
+          <select class="form-select-input" name="event_type">
+            <option value="">All types</option>
+            {% for et in filters.event_types %}
+            <option value="{{ et }}" {% if selected_filters.event_type == et %}selected{% endif %}>{{ et }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label">Outcome</label>
+          <select class="form-select-input" name="outcome">
+            <option value="">All outcomes</option>
+            {% for oc in filters.outcomes %}
+            <option value="{{ oc }}" {% if selected_filters.outcome == oc %}selected{% endif %}>{{ oc }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label">Target Type</label>
+          <select class="form-select-input" name="target_type">
+            <option value="">All targets</option>
+            {% for tt in filters.target_types %}
+            <option value="{{ tt }}" {% if selected_filters.target_type == tt %}selected{% endif %}>{{ tt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 col-sm-6">
+          <label class="form-label">Source IP</label>
+          <input class="form-input" name="source_ip" value="{{ selected_filters.source_ip }}" placeholder="192.168.x.x">
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <label class="form-label">Reason / Metadata</label>
+          <input class="form-input" name="metadata_query" value="{{ selected_filters.metadata_query }}" placeholder="Search in metadata…">
+        </div>
+        <div class="col-md-2 col-sm-4">
+          <label class="form-label">Limit</label>
+          <input class="form-input" name="limit" type="number" min="1" max="500" value="{{ selected_filters.limit }}">
+        </div>
+        <div class="col-md-2 col-sm-4" style="display:flex;align-items:flex-end;">
+          <button class="btn-primary" type="submit" style="width:100%;">Apply Filters</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Events Table -->
+<div class="s-card">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Audit Events</div>
+      <div class="s-card-sub">{{ audit_events|length }} events · click a row to expand</div>
+    </div>
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Event Type</th>
+          <th>Outcome</th>
+          <th>Actor</th>
+          <th>Target</th>
+          <th>Source IP</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in audit_events %}
+        <tr onclick="toggleAuditExpand(this)" style="cursor:pointer;">
+          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);white-space:nowrap;">{{ event.created_at[:19].replace('T',' ') }}</td>
+          <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;">{{ event.event_type }}</span></td>
+          <td>
+            {% if event.outcome == 'success' or event.outcome == 'allowed' %}<span class="sbadge sbadge-green">{{ event.outcome }}</span>
+            {% elif event.outcome == 'denied' or event.outcome == 'failure' or event.outcome == 'error' %}<span class="sbadge sbadge-red">{{ event.outcome }}</span>
+            {% else %}<span class="sbadge sbadge-muted">{{ event.outcome }}</span>{% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ event.actor_user_id[:8] ~ '…' if event.actor_user_id else '—' }}</td>
+          <td style="font-size:12px;color:var(--c-s4);">{% if event.target_type %}<span class="tag">{{ event.target_type }}</span>{% endif %} {{ event.target_id[:8] ~ '…' if event.target_id else '' }}</td>
+          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ event.source_ip or '—' }}</td>
+          <td style="font-size:12px;color:var(--c-s4);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ event.reason or '' }}">{{ event.reason or '—' }}</td>
+        </tr>
+        <!-- Expand Row -->
+        <tr class="expand-row" style="display:none;">
+          <td colspan="7" style="padding:0;">
+            <div style="padding:16px 20px;background:var(--c-s1);border-bottom:1px solid var(--c-s2);">
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <div class="s-card" style="margin:0;">
+                    <div class="s-card-head"><div class="s-card-title" style="font-size:13px;">Identifiers</div></div>
+                    <div style="padding:0 16px 12px;">
+                      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                        <tr><th style="padding:4px 8px 4px 0;color:var(--c-s4);font-weight:500;white-space:nowrap;">Event ID</th><td style="padding:4px 0;font-family:'JetBrains Mono',monospace;word-break:break-all;">{{ event.id }}</td></tr>
+                        <tr><th style="padding:4px 8px 4px 0;color:var(--c-s4);font-weight:500;">Actor User</th><td style="padding:4px 0;font-family:'JetBrains Mono',monospace;word-break:break-all;">{{ event.actor_user_id or '—' }}</td></tr>
+                        <tr><th style="padding:4px 8px 4px 0;color:var(--c-s4);font-weight:500;">Actor Device</th><td style="padding:4px 0;font-family:'JetBrains Mono',monospace;word-break:break-all;">{{ event.actor_device_id or '—' }}</td></tr>
+                        <tr><th style="padding:4px 8px 4px 0;color:var(--c-s4);font-weight:500;">Target</th><td style="padding:4px 0;font-family:'JetBrains Mono',monospace;word-break:break-all;">{{ event.target_type or '—' }} / {{ event.target_id or '—' }}</td></tr>
+                        <tr><th style="padding:4px 8px 4px 0;color:var(--c-s4);font-weight:500;">User Agent</th><td style="padding:4px 0;color:var(--c-s4);">{{ event.user_agent or '—' }}</td></tr>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-7">
+                  <div class="s-card" style="margin:0;">
+                    <div class="s-card-head"><div class="s-card-title" style="font-size:13px;">Event Metadata</div></div>
+                    <div style="padding:0 16px 12px;">
+                      {% if event.metadata %}
+                      <div class="dt-wrap" style="max-height:180px;overflow-y:auto;">
+                        <table class="dt" style="font-size:11px;">
+                          <thead><tr><th>Key</th><th>Value</th></tr></thead>
+                          <tbody>
+                            {% for k, v in event.metadata.items() %}
+                            <tr><td style="font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ k }}</td><td style="word-break:break-all;">{{ v }}</td></tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                      {% else %}
+                      <div style="font-size:12px;color:var(--c-s3);padding:8px 0;">No metadata</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="dt-empty">No audit events match the filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  function toggleAuditExpand(row) {
+    const next = row.nextElementSibling;
+    if (!next || !next.classList.contains('expand-row')) return;
+    const open = next.style.display !== 'none';
+    next.style.display = open ? 'none' : '';
+    row.classList.toggle('expand-open', !open);
+  }
+</script>
+{% endblock %}

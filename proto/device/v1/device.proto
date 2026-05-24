@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package keyward.device.v1;
+
+option go_package = "github.com/playup/keyward/proto/device/v1;devicev1";
+
+service DeviceService {
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message HeartbeatRequest {
+  string device_id = 1;
+  string client_version = 2;
+}
+
+message HeartbeatResponse {
+  string status = 1;
+}

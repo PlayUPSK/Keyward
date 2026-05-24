@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+{% block title %}Server Inventory{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Server Inventory</h1>
+    <p class="page-sub">Enrollment status, environment grouping, and OpenSSH trust configuration.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#serverGroupModal">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+      New Group
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Servers</div>
+          <div class="s-card-sub">{{ servers | length }} server{{ 's' if servers | length != 1 else '' }} in inventory</div>
+        </div>
+        <div class="s-card-actions">
+          <input class="form-filter" type="text" placeholder="Filter servers…" data-filter-input data-filter-target="#servers-tbody tr">
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Host</th>
+              <th>Environment</th>
+              <th>Status</th>
+              <th>Agent Version</th>
+              <th>Last Seen</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="servers-tbody">
+            {% for server in servers %}
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ server.hostname }}</div>
+                <div class="cell-m">{{ server.id }}</div>
+              </td>
+              <td>
+                <span class="tag">{{ server.environment }}</span>
+              </td>
+              <td>
+                {% if server.status == 'enrolled' %}
+                  <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>enrolled</span>
+                {% elif server.status == 'pending' %}
+                  <span class="sbadge sbadge-amber"><span class="sbadge-dot"></span>pending</span>
+                {% elif server.status == 'suspended' %}
+                  <span class="sbadge sbadge-red"><span class="sbadge-dot"></span>suspended</span>
+                {% else %}
+                  <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>{{ server.status }}</span>
+                {% endif %}
+              </td>
+              <td><span class="cell-m">{{ server.agent_version or "unknown" }}</span></td>
+              <td><span class="cell-s">{{ server.last_seen_at or "—" }}</span></td>
+              <td style="text-align:right;">
+                <form method="post" action="{{ url_for('admin.servers_status', server_id=server.id) }}" style="display:inline-flex;gap:6px;justify-content:flex-end;">
+                  <select class="form-select-sm" name="status" style="background:var(--c-s2);border:1px solid var(--c-border);color:var(--c-text);border-radius:6px;padding:4px 8px;font-size:12px;">
+                    {% for s in ["enrolled", "suspended", "retired", "pending"] %}
+                    <option value="{{ s }}" {% if server.status == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                  </select>
+                  <button class="btn btn-ghost btn-sm" type="submit">Apply</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6"><div class="dt-empty">No servers enrolled yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Server Groups</div>
+          <div class="s-card-sub">Logical groupings for policy targeting</div>
+        </div>
+      </div>
+      <div style="padding:0 4px 8px;">
+        {% for group in server_groups %}
+        <div style="padding:12px 16px;border-bottom:1px solid var(--c-border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ group.name }}</div>
+            <div class="cell-s" style="margin-top:2px;">{{ group.description or "No description" }}</div>
+          </div>
+          <span class="tag" style="flex-shrink:0;">{{ group.server_ids | length }} server{{ 's' if group.server_ids | length != 1 else '' }}</span>
+        </div>
+        {% else %}
+        <div class="dt-empty">No groups defined yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Server Group Modal -->
+<div class="modal fade" id="serverGroupModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('admin.server_groups_create') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Create Server Group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Group Name</label>
+            <input class="form-input" name="name" placeholder="e.g. production-us-east" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input class="form-input" name="description" placeholder="Optional description">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary btn-sm" type="submit">Create Group</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

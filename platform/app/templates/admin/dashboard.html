@@ -1,0 +1,149 @@
+{% extends "admin/base.html" %}
+{% block title %}Security Center{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Security Center</h1>
+    <div class="page-sub">Platform-wide security overview and recent activity</div>
+  </div>
+</div>
+
+<!-- Metric Tiles -->
+<div class="metric-grid" style="margin-bottom:24px;">
+  <div class="metric-tile">
+    <div class="metric-icon mi-green">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ summary.devices.trusted }}</div>
+      <div class="metric-label">Trusted Devices <span style="color:var(--c-s3);">/{{ summary.devices.total }}</span></div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-blue">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ summary.servers.enrolled }}</div>
+      <div class="metric-label">Enrolled Servers <span style="color:var(--c-s3);">/{{ summary.servers.total }}</span></div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-purple">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ summary.access.certificates_24h }}</div>
+      <div class="metric-label">Certificates (24h)</div>
+    </div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-red">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div class="metric-body">
+      <div class="metric-val">{{ summary.audit.denials_24h }}</div>
+      <div class="metric-label">Denials (24h)</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Recent Audit Events -->
+  <div class="col-xl-7">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Recent Audit Events</div>
+          <div class="s-card-sub">{{ summary.audit.events_24h }} events in the last 24 hours</div>
+        </div>
+        <a class="btn-ghost" href="{{ url_for('admin.audit') }}" style="font-size:12px;">View all</a>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event</th>
+              <th>Outcome</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in recent_events %}
+            <tr>
+              <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);white-space:nowrap;">{{ event.created_at[:16].replace('T',' ') }}</td>
+              <td style="font-size:12px;font-family:'JetBrains Mono',monospace;">{{ event.event_type }}</td>
+              <td>
+                {% if event.outcome in ('success','allowed') %}<span class="sbadge sbadge-green">{{ event.outcome }}</span>
+                {% elif event.outcome in ('denied','failure','error') %}<span class="sbadge sbadge-red">{{ event.outcome }}</span>
+                {% else %}<span class="sbadge sbadge-muted">{{ event.outcome }}</span>{% endif %}
+              </td>
+              <td style="font-size:12px;color:var(--c-s4);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ event.reason or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="dt-empty">No recent events.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Certificates -->
+  <div class="col-xl-5">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Recent Certificates</div>
+          <div class="s-card-sub">{{ summary.access.grants }} active grants</div>
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Serial</th>
+              <th>Principal</th>
+              <th>Valid Until</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cert in recent_certificates %}
+            <tr>
+              <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);">{{ cert.serial }}</td>
+              <td><span class="tag" style="font-family:'JetBrains Mono',monospace;font-size:11px;">{{ cert.ssh_principal }}</span></td>
+              <td style="font-size:11px;color:var(--c-s4);">{{ cert.valid_before.strftime('%Y-%m-%d %H:%M') if cert.valid_before else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="dt-empty">No certificates issued yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="row g-3" style="margin-top:0;">
+      <div class="col-4">
+        <a href="{{ url_for('admin.users') }}" class="s-card" style="display:block;padding:16px;text-align:center;text-decoration:none;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--c-blue)'" onmouseout="this.style.borderColor='var(--c-s2)'">
+          <div style="font-size:22px;font-weight:700;color:#e8eaed;line-height:1;">0</div>
+          <div style="font-size:11px;color:var(--c-s4);margin-top:4px;">Users</div>
+        </a>
+      </div>
+      <div class="col-4">
+        <a href="{{ url_for('admin.policies') }}" class="s-card" style="display:block;padding:16px;text-align:center;text-decoration:none;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--c-blue)'" onmouseout="this.style.borderColor='var(--c-s2)'">
+          <div style="font-size:22px;font-weight:700;color:#e8eaed;line-height:1;">{{ summary.access.enabled_policies }}</div>
+          <div style="font-size:11px;color:var(--c-s4);margin-top:4px;">Policies</div>
+        </a>
+      </div>
+      <div class="col-4">
+        <a href="{{ url_for('admin.servers') }}" class="s-card" style="display:block;padding:16px;text-align:center;text-decoration:none;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--c-blue)'" onmouseout="this.style.borderColor='var(--c-s2)'">
+          <div style="font-size:22px;font-weight:700;color:#e8eaed;line-height:1;">{{ summary.servers.total }}</div>
+          <div style="font-size:11px;color:var(--c-s4);margin-top:4px;">Servers</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

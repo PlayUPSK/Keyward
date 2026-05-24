@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  platform:
+    name: Platform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: platform/requirements*.txt
+
+      - name: Install platform dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Ruff
+        run: python -m ruff check app tests wsgi.py
+
+      - name: Compile Python
+        run: python -m compileall app tests wsgi.py
+
+      - name: Pytest
+        run: python -m pytest
+
+  go-test:
+    name: Go Test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: device-client
+            module: agents/device-client
+          - name: server-agent
+            module: agents/server-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: false
+
+      - name: Test
+        working-directory: ${{ matrix.module }}
+        run: go test ./...
+
+  go-build:
+    name: Go Build (${{ matrix.slug }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux/amd64
+            slug: linux-amd64
+          - target: linux/arm64
+            slug: linux-arm64
+          - target: darwin/amd64
+            slug: darwin-amd64
+          - target: darwin/arm64
+            slug: darwin-arm64
+          - target: windows/amd64
+            slug: windows-amd64
+          - target: windows/arm64
+            slug: windows-arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+          cache-dependency-path: agents/device-client/go.sum
+
+      - name: Build
+        env:
+          OUTPUT_DIR: ${{ github.workspace }}/dist/go
+        run: scripts/build-go.sh ${{ matrix.target }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyward-go-${{ matrix.slug }}
+          path: dist/go/${{ matrix.slug }}/
+          if-no-files-found: error

@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block title %}Enroll Device{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Enroll This Device</h1>
+    <p class="page-sub">Run the following commands on the device you want to trust for SSH access.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('portal.index') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Portal
+    </a>
+  </div>
+</div>
+
+<div style="max-width:680px;">
+  <div class="s-card mb-3">
+    <div class="s-card-head">
+      <div>
+        <div class="s-card-title">Step 1 — Configure Platform URL</div>
+        <div class="s-card-sub">Tell the agent where to reach this platform.</div>
+      </div>
+      <span class="tag">Terminal</span>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <div class="code-block">keyward-agent configure --platform-url {{ request.url_root.rstrip("/") }}</div>
+    </div>
+  </div>
+
+  <div class="s-card mb-3">
+    <div class="s-card-head">
+      <div>
+        <div class="s-card-title">Step 2 — Enroll Device</div>
+        <div class="s-card-sub">Register this device and create a keyward. You will receive a one-time code to approve below.</div>
+      </div>
+      <span class="tag">Terminal</span>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <div class="code-block">keyward-agent enroll --name $(hostname) --platform linux</div>
+      <div class="cell-s" style="margin-top:10px;">Replace <code style="background:var(--c-s3);border-radius:4px;padding:1px 5px;font-size:11px;">linux</code> with <code style="background:var(--c-s3);border-radius:4px;padding:1px 5px;font-size:11px;">macos</code> or <code style="background:var(--c-s3);border-radius:4px;padding:1px 5px;font-size:11px;">windows</code> as appropriate.</div>
+    </div>
+  </div>
+
+  <div class="s-card">
+    <div class="s-card-head">
+      <div>
+        <div class="s-card-title">Step 3 — Approve in Browser</div>
+        <div class="s-card-sub">After running the enroll command, visit the approval page with the one-time code shown in the terminal.</div>
+      </div>
+    </div>
+    <div style="padding:0 20px 20px;">
+      <a class="btn btn-primary btn-sm" href="{{ url_for('portal.approve_device') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Approve Device Enrollment
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

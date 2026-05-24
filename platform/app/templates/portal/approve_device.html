@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% block title %}Approve Device{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Approve Device</h1>
+    <div class="page-sub">Verify and approve a device enrollment request</div>
+  </div>
+</div>
+
+{% if enrollment %}
+<!-- Verification card -->
+<div class="row justify-content-center">
+  <div class="col-xl-6 col-lg-8">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Confirm Enrollment</div>
+          <div class="s-card-sub">Review the details below before approving</div>
+        </div>
+        <span class="sbadge sbadge-amber">Pending Approval</span>
+      </div>
+      <div style="padding:0 16px 16px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="font-size:11px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;">Enrollment Code</div>
+          <div class="code-block" style="font-size:18px;letter-spacing:.12em;text-align:center;padding:14px;">{{ enrollment.user_code }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Device Name</div>
+            <div style="font-weight:500;color:#e8eaed;">{{ enrollment.device_name or '—' }}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Platform</div>
+            <div><span class="tag">{{ enrollment.platform or '—' }}</span></div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Expires At</div>
+            <div style="font-size:12px;color:var(--c-s4);">{{ enrollment.expires_at.strftime('%Y-%m-%d %H:%M UTC') if enrollment.expires_at else '—' }}</div>
+          </div>
+        </div>
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--c-amber);line-height:1.5;">
+          <strong>Security check:</strong> Only approve this if you initiated the enrollment from your device right now. Local accounts must confirm their password before this device can be trusted.
+        </div>
+        <form method="POST" action="{{ url_for('portal.approve_device_post') }}" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+          <input type="hidden" name="code" value="{{ enrollment.user_code }}">
+          {% if current_user.auth_provider == 'local' %}
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Confirm Password</label>
+            <input class="form-input" type="password" name="password" required autocomplete="current-password" placeholder="Re-enter your password">
+          </div>
+          {% else %}
+          <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px;font-size:12px;color:var(--c-blue);">
+            Federated approvals require a recent SSO login. If this approval is denied, sign out and sign in again before approving.
+          </div>
+          {% endif %}
+          <div style="display:flex;gap:10px;">
+            <button class="btn-primary" type="submit" style="flex:1;justify-content:center;">Approve Device</button>
+            <a class="btn-ghost" href="{{ url_for('portal.approve_device') }}" style="padding:9px 14px;">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- Code lookup card -->
+<div class="row justify-content-center">
+  <div class="col-xl-5 col-lg-7">
+    <div class="s-card">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Enter Approval Code</div>
+          <div class="s-card-sub">Enter the code shown by the Keyward agent on your device</div>
+        </div>
+      </div>
+      <form method="GET" action="{{ url_for('portal.approve_device') }}" style="padding:0 16px 16px;display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Device Code</label>
+          <input class="form-input" name="user_code" value="{{ code or '' }}" placeholder="e.g. ABC-123" autofocus style="font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:.1em;text-align:center;text-transform:uppercase;">
+        </div>
+        {% if code %}
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px;font-size:12px;color:var(--c-red);">
+          No pending enrollment found for that code. It may have expired or already been used.
+        </div>
+        {% endif %}
+        <button class="btn-primary" type="submit" style="justify-content:center;">Look Up Code</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "admin/base.html" %}
+{% block title %}Security Center{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Security Center</h1>
+    <p class="page-sub">Real-time access posture, authentication activity, and infrastructure health.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/></svg>
+      Full Audit Log
+    </a>
+  </div>
+</div>
+
+<!-- Metric tiles -->
+<div class="metric-grid">
+  <div class="metric-tile">
+    <div class="metric-icon mi-green">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+    </div>
+    <div class="metric-label">Trusted Devices</div>
+    <div class="metric-value">{{ summary.devices.trusted }}</div>
+    <div class="metric-desc">{{ summary.devices.total }} total &middot; {{ summary.devices.revoked }} revoked</div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-blue">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+    </div>
+    <div class="metric-label">Enrolled Servers</div>
+    <div class="metric-value">{{ summary.servers.enrolled }}</div>
+    <div class="metric-desc">{{ summary.servers.total }} total in inventory</div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-purple">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    </div>
+    <div class="metric-label">Certs Issued (24h)</div>
+    <div class="metric-value">{{ summary.access.certificates_24h }}</div>
+    <div class="metric-desc">{{ summary.access.grants }} active grants</div>
+  </div>
+  <div class="metric-tile">
+    <div class="metric-icon mi-red">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12.01" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+    </div>
+    <div class="metric-label">Denials (24h)</div>
+    <div class="metric-value">{{ summary.audit.denials_24h }}</div>
+    <div class="metric-desc">{{ summary.audit.events_24h }} total audit events</div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Recent Audit Events -->
+  <div class="col-xl-7">
+    <div class="s-card h-100">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Recent Audit Events</div>
+          <div class="s-card-sub">Last 12 authentication and policy decisions</div>
+        </div>
+        <div class="s-card-actions">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit') }}">View all</a>
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event Type</th>
+              <th>Outcome</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in recent_events %}
+            <tr>
+              <td><span class="cell-m">{{ event.created_at }}</span></td>
+              <td><span style="font-size:12px;font-weight:500;color:var(--c-text-2);">{{ event.event_type }}</span></td>
+              <td>
+                {% if event.outcome == 'success' %}
+                  <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>success</span>
+                {% elif event.outcome in ['denied', 'error'] %}
+                  <span class="sbadge sbadge-red"><span class="sbadge-dot"></span>{{ event.outcome }}</span>
+                {% else %}
+                  <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>{{ event.outcome }}</span>
+                {% endif %}
+              </td>
+              <td><span class="cell-s" style="color:var(--c-text-2);">{{ event.reason or "—" }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4"><div class="dt-empty">No audit events yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Certificates -->
+  <div class="col-xl-5">
+    <div class="s-card h-100">
+      <div class="s-card-head">
+        <div>
+          <div class="s-card-title">Recent Certificates</div>
+          <div class="s-card-sub">SSH certificates issued via keyward auth</div>
+        </div>
+      </div>
+      <div class="dt-wrap">
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Serial</th>
+              <th>Principal</th>
+              <th>Valid Until</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cert in recent_certificates %}
+            <tr>
+              <td><span class="cell-m">{{ cert.serial }}</span></td>
+              <td><span style="font-size:12px;font-weight:500;color:var(--c-text);">{{ cert.ssh_principal }}</span></td>
+              <td><span class="cell-s">{{ cert.valid_before }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3"><div class="dt-empty">No certificates issued yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick links row -->
+<div class="row g-3 mt-1">
+  <div class="col-md-4">
+    <a href="{{ url_for('admin.users') }}" style="text-decoration:none;display:block;">
+      <div class="s-card" style="transition:border-color var(--t-base),box-shadow var(--t-base);cursor:pointer;" onmouseenter="this.style.borderColor='var(--c-border-mid)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.3)';" onmouseleave="this.style.borderColor='';this.style.boxShadow='';">
+        <div class="s-card-body" style="padding:16px 20px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="metric-icon mi-blue" style="margin:0;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--c-text);">Manage Users</div>
+              <div style="font-size:11px;color:var(--c-text-3);">RBAC, groups, device trust</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--c-text-3);margin-left:auto;"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('admin.policies') }}" style="text-decoration:none;display:block;">
+      <div class="s-card" style="transition:border-color var(--t-base),box-shadow var(--t-base);cursor:pointer;" onmouseenter="this.style.borderColor='var(--c-border-mid)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.3)';" onmouseleave="this.style.borderColor='';this.style.boxShadow='';">
+        <div class="s-card-body" style="padding:16px 20px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="metric-icon mi-purple" style="margin:0;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--c-text);">Policies &amp; Grants</div>
+              <div style="font-size:11px;color:var(--c-text-3);">Access rules &amp; certificate grants</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--c-text-3);margin-left:auto;"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="{{ url_for('admin.servers') }}" style="text-decoration:none;display:block;">
+      <div class="s-card" style="transition:border-color var(--t-base),box-shadow var(--t-base);cursor:pointer;" onmouseenter="this.style.borderColor='var(--c-border-mid)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.3)';" onmouseleave="this.style.borderColor='';this.style.boxShadow='';">
+        <div class="s-card-body" style="padding:16px 20px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="metric-icon mi-cyan" style="margin:0;flex-shrink:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--c-text);">Server Inventory</div>
+              <div style="font-size:11px;color:var(--c-text-3);">Enrollment, health, groups</div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--c-text-3);margin-left:auto;"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "admin/base.html" %}
+{% block title %}Device Trust{% endblock %}
+{% block admin_content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Device Trust</h1>
+    <p class="page-sub">Review device posture, suspend access, and revoke compromised clients.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('portal.enroll_device') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+      Enrollment Guide
+    </a>
+  </div>
+</div>
+
+<div class="s-card">
+  <div class="s-card-head">
+    <div>
+      <div class="s-card-title">Enrolled Devices</div>
+      <div class="s-card-sub">{{ devices | length }} device{{ 's' if devices | length != 1 else '' }} registered</div>
+    </div>
+    <div class="s-card-actions">
+      <input class="form-filter" type="text" placeholder="Filter devices…" data-filter-input data-filter-target="#devices-tbody tr">
+    </div>
+  </div>
+  <div class="dt-wrap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th>Device</th>
+          <th>User</th>
+          <th>Status</th>
+          <th>Trust Level</th>
+          <th>Posture</th>
+          <th>Last Seen</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="devices-tbody">
+        {% for device in devices %}
+        <tr>
+          <td>
+            <div style="font-size:13px;font-weight:600;color:var(--c-text);">{{ device.name }}</div>
+            <div class="cell-m">{{ device.platform }} &middot; <span style="font-family:'JetBrains Mono',monospace;font-size:10px;">{{ device.fingerprint }}</span></div>
+          </td>
+          <td><span class="cell-m">{{ device.user_id }}</span></td>
+          <td>
+            {% if device.status == 'trusted' %}
+              <span class="sbadge sbadge-green"><span class="sbadge-dot"></span>trusted</span>
+            {% elif device.status == 'revoked' %}
+              <span class="sbadge sbadge-red"><span class="sbadge-dot"></span>revoked</span>
+            {% elif device.status == 'suspended' %}
+              <span class="sbadge sbadge-amber"><span class="sbadge-dot"></span>suspended</span>
+            {% else %}
+              <span class="sbadge sbadge-muted"><span class="sbadge-dot"></span>{{ device.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--c-text-2);">{{ device.trust_level }}</span>
+              {% if device.hardware_backed %}
+                <span class="tag" style="background:rgba(16,185,129,.12);color:var(--c-green);border-color:rgba(16,185,129,.2);">hw-backed</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            {% if device.posture %}
+              <span class="cell-s" style="cursor:help;" title="{{ device.posture | tojson }}">view posture</span>
+            {% else %}
+              <span class="cell-s" style="color:var(--c-text-3);">—</span>
+            {% endif %}
+          </td>
+          <td><span class="cell-s">{{ device.last_seen_at or "—" }}</span></td>
+          <td style="text-align:right;">
+            <div style="display:inline-flex;gap:4px;justify-content:flex-end;">
+              {% if device.status != "trusted" %}
+              <form method="post" action="{{ url_for('admin.devices_status', device_id=device.id) }}" style="display:inline;">
+                <input type="hidden" name="status" value="trusted">
+                <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--c-green);border-color:rgba(16,185,129,.3);">Trust</button>
+              </form>
+              {% endif %}
+              {% if device.status == "trusted" %}
+              <form method="post" action="{{ url_for('admin.devices_status', device_id=device.id) }}" style="display:inline;">
+                <input type="hidden" name="status" value="suspended">
+                <input type="hidden" name="reason" value="admin_suspend">
+                <button class="btn btn-ghost btn-sm" type="submit" style="color:var(--c-amber);border-color:rgba(245,158,11,.3);">Suspend</button>
+              </form>
+              {% endif %}
+              {% if device.status != "revoked" %}
+              <form method="post" action="{{ url_for('admin.devices_revoke', device_id=device.id) }}" style="display:inline;">
+                <input type="hidden" name="reason" value="admin_revoke">
+                <button class="btn btn-ghost btn-sm btn-danger" type="submit">Revoke</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7"><div class="dt-empty">No devices enrolled yet.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

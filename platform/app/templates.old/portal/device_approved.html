@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block title %}Device Approved{% endblock %}
+{% block content %}
+<div style="max-width:500px;margin:0 auto;text-align:center;padding-top:40px;">
+  <div style="width:64px;height:64px;background:rgba(16,185,129,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--c-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:32px;height:32px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+  </div>
+  <h1 style="font-size:22px;font-weight:700;color:var(--c-text);margin-bottom:8px;">Device Authorization Successful</h1>
+  <p style="font-size:14px;color:var(--c-text-3);margin-bottom:24px;">The local client will continue enrollment automatically. You can close this page.</p>
+
+  {% if callback_url and enrollment %}
+  <div id="callback-status" class="s-card" style="text-align:left;">
+    <div style="padding:16px 20px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="sbadge sbadge-muted" id="callback-badge"><span class="sbadge-dot" style="animation:pulse 1s infinite;"></span>Contacting local client…</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    const callbackUrl = "{{ callback_url }}?enrollment_id={{ enrollment.id }}&status=approved";
+    fetch(callbackUrl, { mode: "no-cors" })
+      .then(() => {
+        const el = document.getElementById('callback-status');
+        el.innerHTML = '<div style="padding:16px 20px;"><span class="sbadge sbadge-green"><span class="sbadge-dot"></span>Local client notified successfully.</span></div>';
+      })
+      .catch(() => {
+        const el = document.getElementById('callback-status');
+        el.innerHTML = '<div style="padding:16px 20px;"><span class="sbadge sbadge-amber"><span class="sbadge-dot"></span>Could not contact local client — it will continue polling.</span></div>';
+      });
+  </script>
+  {% endif %}
+
+  <div style="margin-top:20px;">
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('portal.index') }}">Return to Portal</a>
+  </div>
+</div>
+{% endblock %}

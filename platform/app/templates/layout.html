@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Keyward{% endblock %} — Keyward</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='brand/keyward-logo-no-text-transparent.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/keyward-logo-no-text-transparent.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --c-bg:       #0b0f18;
+      --c-s1:       #0f1623;
+      --c-s2:       #1a2235;
+      --c-s3:       #4a5568;
+      --c-s4:       #8a9ab5;
+      --c-blue:     #3b82f6;
+      --c-green:    #22c55e;
+      --c-amber:    #f59e0b;
+      --c-red:      #ef4444;
+      --c-purple:   #a855f7;
+      --c-cyan:     #06b6d4;
+      --sidebar-w:  240px;
+      --topbar-h:   54px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      background: var(--c-bg);
+      color: #c8d3e6;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--c-blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ─── App Shell ─────────────────────────────────────── */
+    .app-shell {
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: var(--c-s1);
+      border-right: 1px solid var(--c-s2);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar-w);
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--c-s2);
+    }
+    .sidebar-logo-mark {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .sidebar-logo-mark img {
+      width: 30px; height: 30px; display: block; object-fit: contain;
+      filter: invert(1) brightness(1.12) contrast(1.05);
+    }
+    .sidebar-logo-name { font-size: 13px; font-weight: 700; color: #e8eaed; line-height: 1.2; }
+    .sidebar-logo-tag  { font-size: 10px; color: var(--c-s4); margin-top: 1px; letter-spacing: .04em; }
+    .sidebar-section { padding: 14px 10px 4px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--c-s3);
+      padding: 0 8px; margin-bottom: 4px;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 9px;
+      padding: 7px 8px; border-radius: 6px; color: var(--c-s4);
+      font-size: 13px; font-weight: 500; transition: background .15s, color .15s;
+      text-decoration: none;
+    }
+    .nav-link:hover { background: var(--c-s2); color: #e8eaed; text-decoration: none; }
+    .nav-link.active { background: rgba(59,130,246,.12); color: var(--c-blue); }
+    .nav-icon { width: 15px; height: 15px; flex-shrink: 0; }
+    .sidebar-foot {
+      margin-top: auto; padding: 12px 10px;
+      border-top: 1px solid var(--c-s2);
+    }
+
+    .main-content {
+      margin-left: var(--sidebar-w);
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+    .topbar {
+      position: sticky; top: 0; z-index: 90;
+      height: var(--topbar-h);
+      background: rgba(11,15,24,.9);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--c-s2);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .topbar-cmd {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 7px;
+      padding: 5px 12px; cursor: pointer; color: var(--c-s4); font-size: 12px;
+      transition: border-color .15s;
+    }
+    .topbar-cmd:hover { border-color: var(--c-s3); color: #c8d3e6; }
+    .topbar-cmd svg { width: 13px; height: 13px; }
+    .topbar-cmd kbd { background: var(--c-s2); border: 1px solid var(--c-s3); border-radius: 4px; padding: 1px 5px; font-size: 10px; font-family: inherit; }
+    .topbar-user { display: flex; align-items: center; gap: 8px; }
+    .topbar-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--c-blue); display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: #fff;
+    }
+    .topbar-name { font-size: 13px; color: #c8d3e6; }
+    .page-body { padding: 28px 32px; flex: 1; }
+
+    /* ─── Auth Shell ─────────────────────────────────────── */
+    .auth-shell {
+      min-height: 100vh;
+      background: var(--c-bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 40px 16px;
+    }
+    .auth-card {
+      width: 100%; max-width: 400px;
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 14px;
+      padding: 36px;
+    }
+    .auth-logo {
+      width: 56px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .auth-logo img {
+      width: 56px; height: 52px; display: block; object-fit: contain;
+      filter: invert(1) brightness(1.12) contrast(1.05);
+    }
+    .auth-title { font-size: 20px; font-weight: 700; color: #e8eaed; text-align: center; margin-bottom: 6px; }
+    .auth-sub   { font-size: 13px; color: var(--c-s4); text-align: center; margin-bottom: 24px; }
+
+    /* ─── Components ─────────────────────────────────────── */
+    .page-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+    }
+    .page-title { font-size: 20px; font-weight: 700; color: #e8eaed; line-height: 1.25; }
+    .page-sub   { font-size: 13px; color: var(--c-s4); margin-top: 3px; }
+    .page-actions { display: flex; align-items: center; gap: 8px; }
+
+    .s-card {
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 10px;
+      overflow: hidden; margin-bottom: 0;
+    }
+    .s-card-head {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      padding: 16px 20px; border-bottom: 1px solid var(--c-s2);
+    }
+    .s-card-title { font-size: 14px; font-weight: 600; color: #e8eaed; }
+    .s-card-sub   { font-size: 12px; color: var(--c-s4); margin-top: 2px; }
+    .s-card-actions { display: flex; align-items: center; gap: 8px; }
+
+    /* Metric Tiles */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 16px;
+    }
+    .metric-tile {
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 10px;
+      padding: 18px 20px; display: flex; align-items: center; gap: 14px;
+    }
+    .metric-icon {
+      width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .metric-icon svg { width: 18px; height: 18px; }
+    .mi-blue   { background: rgba(59,130,246,.15); color: var(--c-blue); }
+    .mi-green  { background: rgba(34,197,94,.15);  color: var(--c-green); }
+    .mi-amber  { background: rgba(245,158,11,.15); color: var(--c-amber); }
+    .mi-red    { background: rgba(239,68,68,.15);  color: var(--c-red); }
+    .mi-purple { background: rgba(168,85,247,.15); color: var(--c-purple); }
+    .mi-cyan   { background: rgba(6,182,212,.15);  color: var(--c-cyan); }
+    .metric-val   { font-size: 24px; font-weight: 700; color: #e8eaed; line-height: 1; }
+    .metric-label { font-size: 12px; color: var(--c-s4); margin-top: 3px; }
+
+    /* Data Table */
+    .dt-wrap { overflow-x: auto; }
+    .dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .dt th {
+      padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase; color: var(--c-s4);
+      background: rgba(255,255,255,.02); border-bottom: 1px solid var(--c-s2);
+      white-space: nowrap;
+    }
+    .dt td {
+      padding: 11px 16px; border-bottom: 1px solid var(--c-s2);
+      vertical-align: middle;
+    }
+    .dt tbody tr:last-child td { border-bottom: none; }
+    .dt tbody tr:hover td { background: rgba(255,255,255,.025); }
+    .dt-empty {
+      text-align: center; padding: 40px 20px;
+      color: var(--c-s3); font-size: 13px;
+    }
+
+    /* Status Badges */
+    .sbadge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      letter-spacing: .03em; white-space: nowrap;
+      background: var(--c-s2); color: var(--c-s4);
+    }
+    .sbadge-green  { background: rgba(34,197,94,.12);  color: var(--c-green); }
+    .sbadge-red    { background: rgba(239,68,68,.12);  color: var(--c-red); }
+    .sbadge-amber  { background: rgba(245,158,11,.12); color: var(--c-amber); }
+    .sbadge-muted  { background: var(--c-s2); color: var(--c-s3); }
+    .sbadge-blue   { background: rgba(59,130,246,.12); color: var(--c-blue); }
+
+    /* Tags */
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 2px 7px; border-radius: 5px;
+      background: var(--c-s2); color: #c8d3e6; font-size: 11px; font-weight: 500;
+    }
+    .tag-danger { background: rgba(239,68,68,.1); color: var(--c-red); }
+
+    /* Buttons */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 7px; border: none; cursor: pointer;
+      background: var(--c-blue); color: #fff; font-size: 13px; font-weight: 600;
+      font-family: inherit; line-height: 1; transition: opacity .15s;
+      text-decoration: none;
+    }
+    .btn-primary:hover { opacity: .88; text-decoration: none; color: #fff; }
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 7px;
+      border: 1px solid var(--c-s2); cursor: pointer;
+      background: transparent; color: var(--c-s4); font-size: 13px; font-weight: 500;
+      font-family: inherit; line-height: 1; transition: border-color .15s, color .15s;
+      text-decoration: none;
+    }
+    .btn-ghost:hover { border-color: var(--c-s3); color: #c8d3e6; text-decoration: none; }
+    .btn-danger {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 7px; border: none; cursor: pointer;
+      background: rgba(239,68,68,.1); color: var(--c-red); font-size: 13px; font-weight: 500;
+      font-family: inherit; line-height: 1; transition: background .15s;
+      text-decoration: none;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,.2); text-decoration: none; }
+
+    /* Forms */
+    .form-label { font-size: 12px; font-weight: 500; color: var(--c-s4); display: block; margin-bottom: 5px; }
+    .form-group { margin-bottom: 14px; }
+    .form-input {
+      width: 100%; background: var(--c-bg); border: 1px solid var(--c-s2); border-radius: 7px;
+      padding: 8px 11px; color: #e8eaed; font-size: 13px; font-family: inherit;
+      transition: border-color .15s; outline: none;
+    }
+    .form-input:focus { border-color: var(--c-blue); }
+    .form-input::placeholder { color: var(--c-s3); }
+    .form-input:disabled { opacity: .5; cursor: not-allowed; }
+    .form-select-input {
+      width: 100%; background: var(--c-bg); border: 1px solid var(--c-s2); border-radius: 7px;
+      padding: 8px 11px; color: #e8eaed; font-size: 13px; font-family: inherit;
+      transition: border-color .15s; outline: none; cursor: pointer;
+    }
+    .form-select-input:focus { border-color: var(--c-blue); }
+    .form-filter {
+      background: var(--c-bg); border: 1px solid var(--c-s2); border-radius: 7px;
+      padding: 6px 11px; color: #e8eaed; font-size: 12px; font-family: inherit;
+      outline: none; transition: border-color .15s; width: 200px;
+    }
+    .form-filter:focus { border-color: var(--c-blue); }
+
+    /* Expandable rows */
+    .expand-row { display: none; }
+    .expand-open td:first-child { border-left: 2px solid var(--c-blue); }
+
+    /* Code block */
+    .code-block {
+      display: inline-block; background: var(--c-bg); border: 1px solid var(--c-s2);
+      border-radius: 6px; padding: 8px 12px; font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; color: #c8d3e6; word-break: break-all;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 12px;
+      width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; border-bottom: 1px solid var(--c-s2);
+    }
+    .modal-title { font-size: 15px; font-weight: 600; color: #e8eaed; }
+    .modal-close {
+      background: none; border: none; cursor: pointer; color: var(--c-s4); padding: 4px;
+      border-radius: 5px; transition: background .15s;
+    }
+    .modal-close:hover { background: var(--c-s2); }
+    .modal-close svg { width: 16px; height: 16px; display: block; }
+    .modal-body { padding: 20px; }
+    .modal-foot {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 14px 20px; border-top: 1px solid var(--c-s2);
+    }
+
+    /* Flash messages */
+    .flash-item {
+      padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .flash-success, .flash-info { background: rgba(34,197,94,.1); border-color: rgba(34,197,94,.25); color: var(--c-green); }
+    .flash-danger, .flash-error  { background: rgba(239,68,68,.1);  border-color: rgba(239,68,68,.25);  color: var(--c-red); }
+    .flash-warning                { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.25); color: var(--c-amber); }
+
+    /* Command Palette */
+    .cmd-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+      display: none; align-items: flex-start; justify-content: center;
+      padding-top: 12vh;
+    }
+    .cmd-overlay.open { display: flex; }
+    .cmd-palette {
+      background: var(--c-s1); border: 1px solid var(--c-s2); border-radius: 12px;
+      width: 100%; max-width: 540px; overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+    }
+    .cmd-input-row {
+      display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+      border-bottom: 1px solid var(--c-s2);
+    }
+    .cmd-input-row svg { width: 16px; height: 16px; color: var(--c-s4); flex-shrink: 0; }
+    #cmdInput {
+      flex: 1; background: none; border: none; outline: none;
+      font-size: 15px; color: #e8eaed; font-family: inherit;
+    }
+    #cmdInput::placeholder { color: var(--c-s3); }
+    .cmd-results { max-height: 340px; overflow-y: auto; }
+    .cmd-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; cursor: pointer; color: var(--c-s4); font-size: 13px;
+    }
+    .cmd-item.active, .cmd-item:hover { background: rgba(59,130,246,.08); color: #e8eaed; }
+    .cmd-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .cmd-group { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--c-s3); padding: 8px 16px 3px; }
+    .cmd-foot {
+      display: flex; gap: 16px; padding: 8px 16px;
+      border-top: 1px solid var(--c-s2); font-size: 11px; color: var(--c-s3);
+    }
+    .cmd-foot span { display: flex; align-items: center; gap: 4px; }
+    .cmd-foot kbd { background: var(--c-s2); border: 1px solid var(--c-s3); border-radius: 3px; padding: 0 4px; font-size: 10px; font-family: inherit; }
+  </style>
+</head>
+<body>
+
+{% if current_user %}
+<!-- ═══ Command Palette ═══ -->
+<div class="cmd-overlay" id="cmdOverlay">
+  <div class="cmd-palette">
+    <div class="cmd-input-row">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="cmdInput" placeholder="Navigate, search, jump to…" autocomplete="off">
+    </div>
+    <div class="cmd-results" id="cmdResults"></div>
+    <div class="cmd-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ App Shell ═══ -->
+<div class="app-shell">
+  <nav class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-mark">
+        <img src="{{ url_for('static', filename='brand/keyward-logo-no-text-transparent.png') }}" alt="Keyward">
+      </div>
+      <div>
+        <div class="sidebar-logo-name">Keyward</div>
+        <div class="sidebar-logo-tag">Zero Trust SSH</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">My Access</div>
+      <a class="nav-link {% if request.endpoint == 'portal.index' %}active{% endif %}" href="{{ url_for('portal.index') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        Portal
+      </a>
+      <a class="nav-link {% if request.endpoint == 'portal.enroll_device' %}active{% endif %}" href="{{ url_for('portal.enroll_device') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+        Enroll Device
+      </a>
+      <a class="nav-link {% if request.endpoint == 'portal.approve_device' %}active{% endif %}" href="{{ url_for('portal.approve_device') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        Approve Device
+      </a>
+    </div>
+
+    {% if 'admin' in current_user_roles() %}
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Administration</div>
+      <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Security Center
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}" href="{{ url_for('admin.users') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.policies' %}active{% endif %}" href="{{ url_for('admin.policies') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Policies
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.servers' %}active{% endif %}" href="{{ url_for('admin.servers') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/></svg>
+        Servers
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.devices' %}active{% endif %}" href="{{ url_for('admin.devices') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></svg>
+        Devices
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.audit' %}active{% endif %}" href="{{ url_for('admin.audit') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Audit Log
+      </a>
+      <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}" href="{{ url_for('admin.settings') }}">
+        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Settings
+      </a>
+    </div>
+    {% endif %}
+
+    <div class="sidebar-foot">
+      <form method="POST" action="{{ url_for('auth.logout') }}" style="display:contents;">
+        <button type="submit" class="nav-link" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;">
+          <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="btn-ghost" id="sidebarToggle" style="padding:5px 8px;display:none;" aria-label="Toggle sidebar">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="topbar-cmd" onclick="_openCmd()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <span>Quick navigate…</span>
+          <kbd>⌘K</kbd>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-user">
+          <div class="topbar-avatar">{{ (current_user.display_name or current_user.email)[0].upper() }}</div>
+          <span class="topbar-name">{{ current_user.display_name or current_user.email }}</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div style="position:fixed;top:calc(var(--topbar-h) + 12px);right:16px;z-index:500;display:flex;flex-direction:column;gap:8px;max-width:360px;">
+        {% for category, message in messages %}
+        <div class="flash-item flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="page-body">
+{% else %}
+<!-- ═══ Auth Shell ═══ -->
+<div class="auth-shell">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div style="position:fixed;top:16px;right:16px;z-index:9000;display:flex;flex-direction:column;gap:8px;max-width:360px;">
+      {% for category, message in messages %}
+      <div class="flash-item flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+{% endif %}
+
+  {% block content %}{% endblock %}
+
+{% if current_user %}
+    </div>
+  </div>
+</div>
+{% else %}
+</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+
+{% if current_user %}
+<script>
+  const _nav = [
+    { label: 'My Portal',       href: '{{ url_for("portal.index") }}',         svg: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',  group: 'Portal' },
+    { label: 'Enroll Device',   href: '{{ url_for("portal.enroll_device") }}',  svg: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',                                                                                                                              group: 'Portal' },
+    { label: 'Approve Device',  href: '{{ url_for("portal.approve_device") }}', svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',                                                                                                                   group: 'Portal' },
+    {% if 'admin' in current_user_roles() %}
+    { label: 'Security Center', href: '{{ url_for("admin.dashboard") }}',       svg: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',                                                                                                                                                                group: 'Admin'  },
+    { label: 'Users',           href: '{{ url_for("admin.users") }}',           svg: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',                                                                                                                  group: 'Admin'  },
+    { label: 'Policies',        href: '{{ url_for("admin.policies") }}',        svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',                                                                                                                                             group: 'Admin'  },
+    { label: 'Servers',         href: '{{ url_for("admin.servers") }}',         svg: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/>',                                                                                                   group: 'Admin'  },
+    { label: 'Devices',         href: '{{ url_for("admin.devices") }}',         svg: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',                                                                                                                              group: 'Admin'  },
+    { label: 'Audit Log',       href: '{{ url_for("admin.audit") }}',           svg: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>',                                                                              group: 'Admin'  },
+    { label: 'Settings',        href: '{{ url_for("admin.settings") }}',        svg: '<circle cx="12" cy="12" r="3"/>',                                                                                                                                                                      group: 'Admin'  },
+    {% endif %}
+  ];
+
+  let _idx = -1;
+
+  function _openCmd() {
+    document.getElementById('cmdOverlay').classList.add('open');
+    document.getElementById('cmdInput').value = '';
+    _renderCmd('');
+    setTimeout(() => document.getElementById('cmdInput').focus(), 50);
+  }
+  function _closeCmd() {
+    document.getElementById('cmdOverlay').classList.remove('open');
+    _idx = -1;
+  }
+  function _renderCmd(q) {
+    const el = document.getElementById('cmdResults');
+    const items = q ? _nav.filter(n => n.label.toLowerCase().includes(q.toLowerCase())) : _nav;
+    if (!items.length) { el.innerHTML = '<div class="cmd-item" style="color:var(--c-s3);">No results</div>'; return; }
+    let html = ''; let lastGroup = '';
+    items.forEach((item, i) => {
+      if (item.group !== lastGroup) { html += `<div class="cmd-group">${item.group}</div>`; lastGroup = item.group; }
+      html += `<div class="cmd-item" data-href="${item.href}" onclick="location.href=this.dataset.href"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">${item.svg}</svg>${item.label}</div>`;
+    });
+    el.innerHTML = html;
+    _idx = -1;
+  }
+
+  document.getElementById('cmdInput').addEventListener('input', e => _renderCmd(e.target.value));
+  document.getElementById('cmdInput').addEventListener('keydown', e => {
+    const items = document.querySelectorAll('.cmd-item[data-href]');
+    if (e.key === 'ArrowDown') { e.preventDefault(); _idx = Math.min(_idx + 1, items.length - 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _idx = Math.max(_idx - 1, 0); }
+    else if (e.key === 'Enter' && _idx >= 0) { location.href = items[_idx].dataset.href; return; }
+    else if (e.key === 'Escape') { _closeCmd(); return; }
+    items.forEach((el, i) => el.classList.toggle('active', i === _idx));
+  });
+  document.getElementById('cmdOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) _closeCmd(); });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); _openCmd(); }
+  });
+
+  // Auto-dismiss flashes
+  setTimeout(() => {
+    document.querySelectorAll('.flash-item').forEach(el => el.style.opacity = '0');
+    setTimeout(() => document.querySelectorAll('.flash-item').forEach(el => el.remove()), 500);
+  }, 5000);
+
+  // Table filter
+  document.querySelectorAll('[data-filter-input]').forEach(input => {
+    const targetSel = input.dataset.filterTarget;
+    input.addEventListener('input', e => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll(targetSel).forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+      });
+    });
+  });
+</script>
+{% endif %}
+</body>
+</html>
