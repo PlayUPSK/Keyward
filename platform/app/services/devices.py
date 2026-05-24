@@ -224,7 +224,7 @@ def finish_device_enrollment(payload: dict) -> tuple[dict, int]:
         db.session.flush()
 
     posture = _clean_posture(payload.get("posture", {}))
-    posture_ok, posture_reason, posture_context = evaluate_device_enrollment_posture(posture)
+    posture_ok, posture_reason, posture_context = evaluate_device_enrollment_posture(posture, user)
     if not posture_ok:
         record_audit_event(
             event_type="device.enrollment_posture_denied",

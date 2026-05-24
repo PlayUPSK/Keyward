@@ -16,7 +16,12 @@ from app.services.auth import (
     update_user_profile,
 )
 from app.services.integrations import list_integrations, sync_integration, test_integration, update_integration
-from app.services.device_posture import get_device_posture_policy, update_device_posture_policy
+from app.services.device_posture import (
+    create_device_posture_rule,
+    delete_device_posture_rule,
+    get_device_posture_policy,
+    update_device_posture_policy,
+)
 from app.services.admin_overview import dashboard_summary
 from app.services.audit import audit_filter_options, list_audit_events
 from app.services.devices import revoke_device, set_device_status
@@ -206,6 +211,22 @@ def policies_device_posture_update():
     return redirect(url_for("admin.policies"))
 
 
+@bp.post("/policies/device-posture/rules")
+@require_role(ADMIN_ROLE)
+def policies_device_posture_rule_create():
+    result, _ = create_device_posture_rule(request.form, actor_user_id=current_user().id)
+    flash(result.get("error") or "Scoped device posture policy created.", "danger" if result.get("error") else "success")
+    return redirect(url_for("admin.policies"))
+
+
+@bp.post("/policies/device-posture/rules/<rule_id>/delete")
+@require_role(ADMIN_ROLE)
+def policies_device_posture_rule_delete(rule_id):
+    result, _ = delete_device_posture_rule(rule_id, actor_user_id=current_user().id)
+    flash(result.get("error") or "Scoped device posture policy deleted.", "danger" if result.get("error") else "success")
+    return redirect(url_for("admin.policies"))
+
+
 @bp.get("/servers")
 @require_role(ADMIN_ROLE)
 def servers():
@@ -368,7 +389,13 @@ def users_set_status(user_id):
 @bp.post("/users/<user_id>/profile")
 @require_role(ADMIN_ROLE)
 def users_update_profile(user_id):
-    update_user_profile(user_id, request.form.get("display_name"), request.form.get("external_id"))
+    update_user_profile(
+        user_id,
+        request.form.get("display_name"),
+        request.form.get("external_id"),
+        first_name=request.form.get("first_name"),
+        last_name=request.form.get("last_name"),
+    )
     return redirect(url_for("admin.users"))
 
 
@@ -395,6 +422,8 @@ def users_create():
         password=request.form.get("password", ""),
         display_name=request.form.get("display_name"),
         roles=roles,
+        first_name=request.form.get("first_name"),
+        last_name=request.form.get("last_name"),
     )
     return redirect(url_for("admin.users"))
 

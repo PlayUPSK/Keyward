@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ type Info struct {
 	CollectedAt       string            `json:"collected_at"`
 	Hostname          string            `json:"hostname,omitempty"`
 	OS                string            `json:"os"`
+	OSVersion         string            `json:"os_version,omitempty"`
 	Arch              string            `json:"arch"`
 	User              string            `json:"local_user,omitempty"`
 	Vendor            string            `json:"vendor,omitempty"`
@@ -31,6 +33,7 @@ type Info struct {
 	Domain            string            `json:"domain,omitempty"`
 	DirectoryService  string            `json:"directory_service,omitempty"`
 	Identifiers       map[string]string `json:"identifiers,omitempty"`
+	Security          map[string]any    `json:"security,omitempty"`
 }
 
 func Collect(ctx context.Context) map[string]any {
@@ -39,6 +42,7 @@ func Collect(ctx context.Context) map[string]any {
 		OS:          runtime.GOOS,
 		Arch:        runtime.GOARCH,
 		Identifiers: map[string]string{},
+		Security:    map[string]any{},
 	}
 	if hostname, err := os.Hostname(); err == nil {
 		info.Hostname = hostname
@@ -53,6 +57,7 @@ func Collect(ctx context.Context) map[string]any {
 	return map[string]any{
 		"hostname":           info.Hostname,
 		"os":                 info.OS,
+		"os_version":         info.OSVersion,
 		"arch":               info.Arch,
 		"local_user":         info.User,
 		"device_fingerprint": info.DeviceFingerprint,
@@ -70,6 +75,7 @@ func Collect(ctx context.Context) map[string]any {
 			"domain":            info.Domain,
 			"directory_service": info.DirectoryService,
 		},
+		"security": info.Security,
 		"agent": map[string]any{
 			"collected_at": info.CollectedAt,
 			"collector":    "keyward-ssh-deviceinfo-v1",
@@ -78,6 +84,7 @@ func Collect(ctx context.Context) map[string]any {
 }
 
 func collectDarwin(ctx context.Context, info *Info) {
+	info.OSVersion = commandOutput(ctx, "sw_vers", "-productVersion")
 	output := commandOutput(ctx, "system_profiler", "SPHardwareDataType")
 	values := parseColonLines(output)
 	info.Vendor = "Apple"
@@ -96,9 +103,17 @@ func collectDarwin(ctx context.Context, info *Info) {
 		info.Domain = domain
 		info.DirectoryService = "active_directory"
 	}
+	setSecurity(info, "disk_encryption", strings.Contains(commandOutput(ctx, "fdesetup", "status"), "FileVault is On"))
+	setSecurity(info, "firewall", strings.Contains(commandOutput(ctx, "/usr/libexec/ApplicationFirewall/socketfilterfw", "--getglobalstate"), "enabled"))
+	setSecurity(info, "screen_lock", strings.TrimSpace(commandOutput(ctx, "defaults", "read", "com.apple.screensaver", "askForPassword")) == "1")
+	profilesStatus := commandOutput(ctx, "profiles", "status", "-type", "enrollment")
+	setSecurity(info, "mdm_enrolled", strings.Contains(profilesStatus, "MDM enrollment: Yes") || strings.Contains(profilesStatus, "Enrolled via DEP: Yes"))
+	setSecurity(info, "antivirus", pathExists("/Library/Apple/System/Library/CoreServices/XProtect.bundle") || pathExists("/System/Library/CoreServices/XProtect.bundle"))
 }
 
 func collectLinux(ctx context.Context, info *Info) {
+	osRelease := parseEqualsLines(readTrimmed("/etc/os-release"))
+	info.OSVersion = strings.Trim(osRelease["VERSION_ID"], `"`)
 	info.Vendor = readTrimmed("/sys/class/dmi/id/sys_vendor")
 	info.Model = firstNonEmpty(readTrimmed("/sys/class/dmi/id/product_name"), readTrimmed("/sys/class/dmi/id/board_name"))
 	serial := firstNonEmpty(readTrimmed("/sys/class/dmi/id/product_serial"), readTrimmed("/sys/class/dmi/id/board_serial"))
@@ -118,6 +133,11 @@ func collectLinux(ctx context.Context, info *Info) {
 		info.Domain = domain
 		info.DirectoryService = "realm"
 	}
+	setSecurity(info, "tpm_present", pathExists("/sys/class/tpm/tpm0") || pathExists("/dev/tpm0"))
+	setSecurity(info, "secure_boot", linuxSecureBootEnabled())
+	setSecurity(info, "disk_encryption", strings.Contains(commandOutput(ctx, "lsblk", "-no", "TYPE"), "crypt"))
+	setSecurity(info, "firewall", strings.Contains(strings.ToLower(commandOutput(ctx, "ufw", "status")), "status: active"))
+	setSecurity(info, "mdm_enrolled", info.DomainJoined)
 }
 
 func commandOutput(ctx context.Context, name string, args ...string) string {
@@ -160,6 +180,27 @@ func readTrimmed(path string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(data))
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func linuxSecureBootEnabled() bool {
+	paths, err := filepath.Glob("/sys/firmware/efi/efivars/SecureBoot-*")
+	if err != nil || len(paths) == 0 {
+		return false
+	}
+	data, err := os.ReadFile(paths[0])
+	return err == nil && len(data) > 4 && data[4] == 1
+}
+
+func setSecurity(info *Info, key string, value bool) {
+	if info.Security == nil {
+		info.Security = map[string]any{}
+	}
+	info.Security[key] = value
 }
 
 func setHashed(values map[string]string, key string, value string) {
