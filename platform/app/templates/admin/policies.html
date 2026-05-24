@@ -238,8 +238,8 @@
     <div class="s-card-head">
       <div>
         <div class="s-card-title">Access Grants</div>
-        <div class="s-card-sub">Direct entitlements — grants define who can SSH to which servers as which Unix user,
-          independently of policies</div>
+        <div class="s-card-sub">Direct entitlements — grants define who can SSH to which servers as which Unix user.
+          Select user or group when creating a grant.</div>
       </div>
       <input class="form-filter" type="text" placeholder="Filter grants…" data-filter-input
         data-filter-target="#grants-tbody tr.grant-row">
@@ -738,14 +738,16 @@
 
         <!-- Subject selects (mutually exclusive) -->
         <div id="grantUserRow">
-          <label class="form-label">Select User <span style="color:var(--c-red);">*</span></label>
+          <label class="form-label">Select user <span style="color:var(--c-red);">*</span></label>
           <select class="form-select-input" name="subject_id" id="grantUserSel">
+            <option value="">Select user</option>
             {% for opt in subject_options.user %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
           </select>
         </div>
         <div id="grantGroupRow" style="display:none;">
           <label class="form-label">Select Group <span style="color:var(--c-red);">*</span></label>
           <select class="form-select-input" name="subject_id" id="grantGroupSel" disabled>
+            <option value="">Select group</option>
             {% for opt in subject_options.group %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
           </select>
         </div>
