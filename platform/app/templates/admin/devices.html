@@ -1,10 +1,20 @@
 {% extends "admin/base.html" %}
 {% block title %}Device Trust{% endblock %}
 {% block admin_content %}
+
 <div class="page-head">
   <div>
     <h1 class="page-title">Device Trust</h1>
-    <div class="page-sub">Keyward-enrolled devices and their security posture</div>
+    <div class="page-sub">Passkey-enrolled devices — inspect security posture and manage trust status</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div class="sbadge sbadge-green" style="padding:5px 10px;">{{
+      devices|selectattr('status','eq','trusted')|list|length }} trusted</div>
+    <div class="sbadge sbadge-amber" style="padding:5px 10px;">{{
+      devices|selectattr('status','eq','pending')|list|length }} pending</div>
+    {% set revoked_count = devices|selectattr('status','eq','revoked')|list|length %}
+    {% if revoked_count %}<div class="sbadge sbadge-red" style="padding:5px 10px;">{{ revoked_count }} revoked</div>{%
+    endif %}
   </div>
 </div>
 
@@ -12,12 +22,13 @@
 <div class="s-card" style="margin-bottom:16px;">
   <div style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
     <div>
-      <div class="form-label" style="margin-bottom:3px;">Filter</div>
-      <input class="form-filter" id="deviceFilter" type="text" placeholder="Name, user, fingerprint…" style="width:220px;" oninput="_filterDevices()">
+      <div class="form-label" style="margin-bottom:3px;">Search</div>
+      <input class="form-filter" id="deviceFilter" type="text" placeholder="Name, user ID, fingerprint…"
+        style="width:240px;" oninput="_filterDevices()">
     </div>
     <div>
       <div class="form-label" style="margin-bottom:3px;">Status</div>
-      <select class="form-select-input" id="statusFilter" onchange="_filterDevices()" style="width:140px;padding:6px 10px;font-size:12px;">
+      <select class="form-select-input" id="statusFilter" onchange="_filterDevices()" style="width:140px;">
         <option value="">All statuses</option>
         <option value="trusted">Trusted</option>
         <option value="pending">Pending</option>
@@ -27,7 +38,7 @@
     </div>
     <div>
       <div class="form-label" style="margin-bottom:3px;">Platform</div>
-      <select class="form-select-input" id="platformFilter" onchange="_filterDevices()" style="width:140px;padding:6px 10px;font-size:12px;">
+      <select class="form-select-input" id="platformFilter" onchange="_filterDevices()" style="width:140px;">
         <option value="">All platforms</option>
         {% for platform in devices|map(attribute='platform')|unique|sort %}
         <option value="{{ platform }}">{{ platform }}</option>
@@ -36,19 +47,24 @@
     </div>
     <div>
       <div class="form-label" style="margin-bottom:3px;">Trust Level</div>
-      <select class="form-select-input" id="trustFilter" onchange="_filterDevices()" style="width:140px;padding:6px 10px;font-size:12px;">
-        <option value="">All levels</option>
-        <option value="hardware">Hardware</option>
+      <select class="form-select-input" id="trustFilter" onchange="_filterDevices()" style="width:130px;">
+        <option value="">All</option>
+        <option value="hardware">Hardware-backed</option>
         <option value="software">Software</option>
       </select>
     </div>
-    <button class="btn-ghost" onclick="_clearFilters()" style="font-size:12px;padding:6px 12px;">Clear</button>
+    <button class="btn-ghost" onclick="_clearDeviceFilters()" style="font-size:12px;padding:6px 12px;">Clear
+      filters</button>
   </div>
 </div>
 
 <div class="s-card">
   <div class="s-card-head">
-    <div><div class="s-card-title">All Devices</div><div class="s-card-sub" id="deviceCount">{{ devices|length }} device{{ 's' if devices|length != 1 }} — click a row to inspect posture &amp; details</div></div>
+    <div>
+      <div class="s-card-title">All Devices</div>
+      <div class="s-card-sub" id="deviceCount">{{ devices|length }} device{{ 's' if devices|length != 1 }} — click any
+        row to view posture details</div>
+    </div>
   </div>
   <div class="dt-wrap">
     <table class="dt" id="devicesTable">
@@ -56,12 +72,12 @@
         <tr>
           <th style="width:26px;"></th>
           <th>Device</th>
-          <th>Platform</th>
-          <th>User</th>
+          <th>OS / Platform</th>
+          <th>Owner</th>
           <th>Status</th>
           <th>Trust</th>
           <th>Last Seen</th>
-          <th>Actions</th>
+          <th style="text-align:right;">Actions</th>
         </tr>
       </thead>
       <tbody id="devices-tbody">
@@ -69,20 +85,33 @@
         {% set posture = device.posture or {} %}
         {% set hardware = posture.get('hardware', {}) %}
         {% set enterprise = posture.get('enterprise', {}) %}
-        <tr class="device-row" data-status="{{ device.status }}" data-platform="{{ device.platform }}" data-trust="{{ device.trust_level }}" style="cursor:pointer;" onclick="_expandRow('d-{{ device.id }}', event)">
-          <td onclick="event.stopPropagation();_expandRow('d-{{ device.id }}')">
-            <span data-expand-icon="d-{{ device.id }}" style="color:var(--c-s3);transition:transform .2s;display:inline-block;font-size:10px;">▶</span>
+        {% set security = posture.get('security', {}) %}
+        <tr class="device-row"
+          data-name="{{ device.name|lower }} {{ device.user_id|lower }} {{ (posture.get('device_fingerprint') or device.fingerprint)|lower }}"
+          data-status="{{ device.status }}" data-platform="{{ device.platform }}"
+          data-trust="{{ 'hardware' if device.trust_level == 'hardware' or device.hardware_backed else 'software' }}"
+          style="cursor:pointer;" onclick="_expandDevice('{{ device.id }}', event)">
+          <td onclick="event.stopPropagation();_expandDevice('{{ device.id }}')">
+            <span id="icon-d-{{ device.id }}"
+              style="color:var(--c-s3);transition:transform .18s;display:inline-block;font-size:10px;user-select:none;">▶</span>
           </td>
           <td>
             <div style="font-weight:500;color:#e8eaed;">{{ device.name }}</div>
-            <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ posture.get('hostname') or 'hostname unknown' }}</div>
-            <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);" title="{{ posture.get('device_fingerprint') or device.fingerprint }}">{{ (posture.get('device_fingerprint') or device.fingerprint)[:24] }}…</div>
+            <div style="font-size:11px;color:var(--c-s4);margin-top:1px;font-family:'JetBrains Mono',monospace;"
+              title="{{ posture.get('device_fingerprint') or device.fingerprint }}">{{
+              ((posture.get('device_fingerprint') or device.fingerprint) or '')[:28] }}{% if
+              (posture.get('device_fingerprint') or device.fingerprint) %}…{% endif %}</div>
           </td>
           <td>
             <span class="tag">{{ posture.get('os') or device.platform }}</span>
-            {% if posture.get('arch') %}<span class="tag" style="margin-left:3px;">{{ posture.get('arch') }}</span>{% endif %}
+            {% if posture.get('arch') %}<span class="tag"
+              style="margin-left:3px;font-family:'JetBrains Mono',monospace;font-size:10px;">{{ posture.get('arch')
+              }}</span>{% endif %}
+            {% if posture.get('hostname') %}<div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{
+              posture.get('hostname') }}</div>{% endif %}
           </td>
-          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);" title="{{ device.user_id }}">{{ device.user_id|string|truncate(8,True,'…') }}</td>
+          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--c-s4);"
+            title="{{ device.user_id }}">{{ device.user_id|string|truncate(16, True, '…') }}</td>
           <td>
             {% if device.status == 'trusted' %}<span class="sbadge sbadge-green">Trusted</span>
             {% elif device.status == 'pending' %}<span class="sbadge sbadge-amber">Pending</span>
@@ -92,29 +121,36 @@
           </td>
           <td>
             {% if device.trust_level == 'hardware' or device.hardware_backed %}
-              <span class="tag" style="background:rgba(34,197,94,.1);color:var(--c-green);">hardware</span>
+            <span class="tag" style="background:rgba(34,197,94,.1);color:var(--c-green);font-size:11px;">hardware</span>
             {% else %}
-              <span class="tag">software</span>
+            <span class="tag" style="font-size:11px;">software</span>
             {% endif %}
-            {% if device.hardware_backed %}<span class="tag" style="background:rgba(168,85,247,.1);color:var(--c-purple);margin-left:3px;">TPM</span>{% endif %}
+            {% if security.get('tpm_present') or device.hardware_backed %}
+            <span class="tag"
+              style="background:rgba(168,85,247,.1);color:var(--c-purple);font-size:10px;margin-left:3px;">TPM</span>
+            {% endif %}
           </td>
-          <td style="font-size:12px;color:var(--c-s4);">{{ device.last_seen_at.strftime('%Y-%m-%d %H:%M') if device.last_seen_at else '—' }}</td>
+          <td style="font-size:12px;color:var(--c-s4);">{{ device.last_seen_at.strftime('%Y-%m-%d %H:%M') if
+            device.last_seen_at else '—' }}</td>
           <td onclick="event.stopPropagation()">
-            <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <div style="display:flex;gap:4px;justify-content:flex-end;">
               {% if device.status != 'trusted' %}
               <form method="POST" action="{{ url_for('admin.devices_status', device_id=device.id) }}">
                 <input type="hidden" name="status" value="trusted">
-                <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 9px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Trust</button>
+                <button class="btn-ghost" type="submit"
+                  style="font-size:11px;padding:3px 9px;color:var(--c-green);border-color:rgba(34,197,94,.3);">Trust</button>
               </form>
               {% endif %}
-              {% if device.status not in ('suspended','revoked') %}
+              {% if device.status not in ('suspended', 'revoked') %}
               <form method="POST" action="{{ url_for('admin.devices_status', device_id=device.id) }}">
                 <input type="hidden" name="status" value="suspended">
-                <button class="btn-ghost" type="submit" style="font-size:11px;padding:3px 9px;color:var(--c-amber);border-color:rgba(245,158,11,.3);">Suspend</button>
+                <button class="btn-ghost" type="submit"
+                  style="font-size:11px;padding:3px 9px;color:var(--c-amber);border-color:rgba(245,158,11,.3);">Suspend</button>
               </form>
               {% endif %}
               {% if device.status != 'revoked' %}
-              <form method="POST" action="{{ url_for('admin.devices_revoke', device_id=device.id) }}" onsubmit="return confirm('Permanently revoke {{ device.name }}?')">
+              <form method="POST" action="{{ url_for('admin.devices_revoke', device_id=device.id) }}"
+                onsubmit="return confirm('Permanently revoke {{ device.name }}? This cannot be undone.')">
                 <button class="btn-danger" type="submit" style="font-size:11px;padding:3px 9px;">Revoke</button>
               </form>
               {% endif %}
@@ -122,158 +158,204 @@
           </td>
         </tr>
 
-        <!-- Expand: Posture + Details -->
+        <!-- ── Expand: Posture Detail ─────────────────────────── -->
         <tr id="expand-d-{{ device.id }}" style="display:none;">
-          <td colspan="8" style="padding:0;background:var(--c-bg);border-bottom:2px solid var(--c-blue);">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+          <td colspan="8"
+            style="padding:0;background:var(--c-bg);border-left:3px solid var(--c-blue);border-bottom:2px solid var(--c-s2);">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;background:var(--c-s2);">
 
-              <!-- Left: Key details -->
-              <div style="padding:16px 20px;border-right:1px solid var(--c-s2);">
-                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">Device Details</div>
-                <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Full ID</span>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#e8eaed;">{{ device.id }}</span>
+              <!-- Left: Device Identity -->
+              <div style="background:var(--c-bg);padding:16px 20px;">
+                <div
+                  style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--c-s4);margin-bottom:10px;">
+                  Device Identity</div>
+                <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);flex-shrink:0;">ID</span>
+                    <span
+                      style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;word-break:break-all;text-align:right;">{{
+                      device.id }}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Fingerprint</span>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#c8d3e6;word-break:break-all;max-width:300px;text-align:right;">{{ device.fingerprint }}</span>
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);flex-shrink:0;">Fingerprint</span>
+                    <span
+                      style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;word-break:break-all;text-align:right;"
+                      title="{{ posture.get('device_fingerprint') or device.fingerprint }}">{{
+                      (posture.get('device_fingerprint') or device.fingerprint or '—') }}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Hardware Backed</span>
-                    {% if device.hardware_backed %}<span class="sbadge sbadge-green">Yes — TPM/Secure Enclave</span>{% else %}<span class="sbadge sbadge-muted">No — software key</span>{% endif %}
+                  {% if posture.get('hostname') %}
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);">Hostname</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;">{{
+                      posture.get('hostname') }}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Domain Joined</span>
-                    {% if enterprise.get('domain_joined') %}<span class="sbadge sbadge-green">{{ enterprise.get('domain') or 'joined' }}</span>{% else %}<span class="sbadge sbadge-muted">No</span>{% endif %}
+                  {% endif %}
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);">OS</span>
+                    <span style="font-size:11px;color:#e8eaed;">{{ posture.get('os') or device.platform }} {% if
+                      posture.get('arch') %}<span class="tag" style="font-size:10px;">{{ posture.get('arch') }}</span>{%
+                      endif %}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Directory Service</span>
-                    <span class="tag">{{ enterprise.get('directory_service') or '—' }}</span>
+                  {% if enterprise.get('domain') %}
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);">Domain</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;">{{
+                      enterprise.get('domain') }}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Trust Level</span>
-                    <span class="tag">{{ device.trust_level }}</span>
+                  {% endif %}
+                  {% if enterprise.get('managed_by') %}
+                  <div style="display:flex;justify-content:space-between;gap:8px;">
+                    <span style="color:var(--c-s4);">Managed by</span>
+                    <span style="font-size:11px;color:#e8eaed;">{{ enterprise.get('managed_by') }}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Revoked At</span>
-                    <span style="color:var(--c-s4);">{{ device.revoked_at.strftime('%Y-%m-%d %H:%M') if device.revoked_at else '—' }}</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;">
-                    <span style="color:var(--c-s4);">Created</span>
-                    <span style="color:var(--c-s4);">{{ device.created_at.strftime('%Y-%m-%d') if device.created_at else '—' }}</span>
-                  </div>
+                  {% endif %}
                 </div>
               </div>
 
-              <!-- Right: Posture JSON -->
-              <div style="padding:16px 20px;">
-                <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--c-s4);margin-bottom:10px;">
-                  Security Posture
-                  <span style="font-size:10px;font-weight:400;color:var(--c-s3);margin-left:6px;">reported by device agent</span>
+              <!-- Middle: Hardware Signals -->
+              <div style="background:var(--c-bg);padding:16px 20px;border-left:1px solid var(--c-s2);">
+                <div
+                  style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--c-s4);margin-bottom:10px;">
+                  Hardware &amp; Platform</div>
+                {% set hw_signals = [
+                ('tpm_present', 'TPM', security),
+                ('secure_boot', 'Secure Boot', security),
+                ('hw_backed_key', 'Hardware Key', hardware),
+                ] %}
+                {% set ent_signals = [
+                ('domain_joined', 'Domain Joined', enterprise),
+                ('mdm_enrolled', 'MDM Enrolled', security),
+                ] %}
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  {% for key, label, src in hw_signals + ent_signals %}
+                  {% set present = src.get(key) %}
+                  <div
+                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--c-s1);border:1px solid {% if present %}rgba(34,197,94,.2){% else %}var(--c-s2){% endif %};border-radius:6px;">
+                    <span style="font-size:12px;color:{% if present %}#e8eaed{% else %}var(--c-s4){% endif %};">{{ label
+                      }}</span>
+                    {% if present %}
+                    <span style="font-size:11px;color:var(--c-green);font-weight:600;">✓</span>
+                    {% else %}
+                    <span style="font-size:11px;color:var(--c-s3);">—</span>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                  {% if not hardware and not enterprise %}
+                  <div style="font-size:11px;color:var(--c-s3);margin-top:4px;">No hardware posture data reported</div>
+                  {% endif %}
                 </div>
-                {% if posture %}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-                  <div style="padding:10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;">
-                    <div style="font-size:10px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;">Host</div>
-                    <div style="font-size:13px;color:#e8eaed;margin-top:3px;">{{ posture.get('hostname') or '—' }}</div>
-                    <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ posture.get('local_user') or 'local user unknown' }}</div>
+              </div>
+
+              <!-- Right: Security Signals -->
+              <div style="background:var(--c-bg);padding:16px 20px;border-left:1px solid var(--c-s2);">
+                <div
+                  style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--c-s4);margin-bottom:10px;">
+                  Security Signals</div>
+                {% set sec_signals = [
+                ('disk_encryption', 'Disk Encryption'),
+                ('firewall', 'Firewall Active'),
+                ('antivirus', 'Antivirus / EDR'),
+                ('screen_lock', 'Screen Lock'),
+                ('secure_boot', 'Secure Boot'),
+                ('tpm_present', 'TPM Present'),
+                ] %}
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  {% for key, label in sec_signals %}
+                  {% set present = security.get(key) %}
+                  <div
+                    style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--c-s1);border:1px solid {% if present %}rgba(34,197,94,.2){% else %}var(--c-s2){% endif %};border-radius:6px;">
+                    <span style="font-size:12px;color:{% if present %}#e8eaed{% else %}var(--c-s4){% endif %};">{{ label
+                      }}</span>
+                    {% if present %}
+                    <span style="font-size:11px;color:var(--c-green);font-weight:600;">✓</span>
+                    {% elif present is none or present is undefined %}
+                    <span style="font-size:10px;color:var(--c-s3);" title="Not reported">?</span>
+                    {% else %}
+                    <span style="font-size:11px;color:var(--c-red);">✗</span>
+                    {% endif %}
                   </div>
-                  <div style="padding:10px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;">
-                    <div style="font-size:10px;color:var(--c-s4);text-transform:uppercase;letter-spacing:.06em;">Hardware</div>
-                    <div style="font-size:13px;color:#e8eaed;margin-top:3px;">{{ hardware.get('vendor') or 'Unknown vendor' }}</div>
-                    <div style="font-size:11px;color:var(--c-s4);margin-top:2px;">{{ hardware.get('model') or 'Unknown model' }}</div>
-                  </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px;">
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--c-s1);border-radius:6px;border:1px solid var(--c-s2);">
-                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;font-size:11px;">device_fingerprint</span>
-                    <span style="color:#c8d3e6;font-size:10px;text-align:right;max-width:60%;word-break:break-all;font-family:'JetBrains Mono',monospace;">{{ posture.get('device_fingerprint') or '—' }}</span>
-                  </div>
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--c-s1);border-radius:6px;border:1px solid var(--c-s2);">
-                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;font-size:11px;">serial</span>
-                    <span style="color:#c8d3e6;font-size:11px;text-align:right;max-width:60%;word-break:break-all;">
-                      {% if hardware.get('serial_hash') %}
-                        hash {{ hardware.get('serial_hash')[:16] }}…{% if hardware.get('serial_suffix') %} · suffix {{ hardware.get('serial_suffix') }}{% endif %}
-                      {% else %}—{% endif %}
-                    </span>
-                  </div>
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--c-s1);border-radius:6px;border:1px solid var(--c-s2);">
-                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;font-size:11px;">hardware_uuid_hash</span>
-                    <span style="color:#c8d3e6;font-size:10px;text-align:right;max-width:60%;word-break:break-all;font-family:'JetBrains Mono',monospace;">{{ hardware.get('hardware_uuid_hash') or '—' }}</span>
-                  </div>
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--c-s1);border-radius:6px;border:1px solid var(--c-s2);">
-                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;font-size:11px;">machine_id_hash</span>
-                    <span style="color:#c8d3e6;font-size:10px;text-align:right;max-width:60%;word-break:break-all;font-family:'JetBrains Mono',monospace;">{{ hardware.get('machine_id_hash') or '—' }}</span>
-                  </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:5px;">
-                  {% for key, val in posture.items() %}
-                  {% if key != 'hardware' %}
-                  <div style="display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;padding:5px 8px;background:var(--c-s1);border-radius:6px;border:1px solid var(--c-s2);">
-                    <span style="color:var(--c-s4);font-family:'JetBrains Mono',monospace;font-size:11px;">{{ key }}</span>
-                    <span style="color:#c8d3e6;font-size:11px;text-align:right;max-width:55%;word-break:break-all;">
-                      {% if val == true or val == 'true' %}<span class="sbadge sbadge-green" style="font-size:10px;">true</span>
-                      {% elif val == false or val == 'false' %}<span class="sbadge sbadge-red" style="font-size:10px;">false</span>
-                      {% else %}{{ val }}{% endif %}
-                    </span>
+                  {% endfor %}
+                  {% if security.get('os_version') %}
+                  <div
+                    style="margin-top:6px;padding:6px 8px;background:var(--c-s1);border:1px solid var(--c-s2);border-radius:6px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;color:var(--c-s4);">OS Version</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#e8eaed;">{{
+                      security.get('os_version') }}</span>
                   </div>
                   {% endif %}
-                  {% endfor %}
+                  {% if not security %}
+                  <div style="font-size:11px;color:var(--c-s3);">No security posture data reported</div>
+                  {% endif %}
                 </div>
-                {% else %}
-                <div style="font-size:12px;color:var(--c-s3);padding:8px 0;">No posture data reported. The device agent may not support posture reporting.</div>
-                {% endif %}
               </div>
 
             </div>
           </td>
         </tr>
-        {% else %}
-        <tr><td colspan="8" class="dt-empty">No devices enrolled yet.</td></tr>
         {% endfor %}
+
+        {% if not devices %}
+        <tr>
+          <td colspan="8" class="dt-empty">No devices enrolled yet. Users enroll devices through the portal using
+            passkeys.</td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>
 </div>
 
 {% endblock %}
+
 {% block scripts %}
 <script>
-function _expandRow(id, e) {
-  if (e && e.target.closest('form, button, select, input')) return;
-  const row  = document.getElementById('expand-' + id);
-  const icon = document.querySelector('[data-expand-icon="' + id + '"]');
-  if (!row) return;
-  const open = row.style.display !== 'none';
-  row.style.display = open ? 'none' : 'table-row';
-  if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+  function _expandDevice(id, event) {
+    if (event) event.stopPropagation();
+    const row = document.getElementById('expand-d-' + id);
+    const icon = document.getElementById('icon-d-' + id);
+    if (!row) return;
+    const open = row.style.display !== 'none';
+    row.style.display = open ? 'none' : 'table-row';
+    if (icon) icon.style.transform = open ? '' : 'rotate(90deg)';
+  }
+
+  function _filterDevices() {
+    const q = (document.getElementById('deviceFilter').value || '').toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const platform = document.getElementById('platformFilter').value;
+    const trust = document.getElementById('trustFilter').value;
+    let visible = 0;
+
+    document.querySelectorAll('.device-row').forEach(row => {
+      const nameMatch = !q || (row.dataset.name || '').includes(q);
+      const statusMatch = !status || row.dataset.status === status;
+      const platformMatch = !platform || row.dataset.platform === platform;
+      const trustMatch = !trust || row.dataset.trust === trust;
+      const show = nameMatch && statusMatch && platformMatch && trustMatch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+      // hide expand row when parent is hidden
+      const expandId = row.querySelector('[id^="icon-d-"]')?.id.replace('icon-d-', '');
+      if (expandId) {
+        const expand = document.getElementById('expand-d-' + expandId);
+        if (expand && !show) expand.style.display = 'none';
+      }
+    });
+
+    const total = {{ devices| length
+  }};
+  document.getElementById('deviceCount').textContent =
+    visible === total
+      ? total + ' device' + (total !== 1 ? 's' : '') + ' — click any row to view posture details'
+      : visible + ' of ' + total + ' devices match filter';
 }
-function _filterDevices() {
-  const text     = document.getElementById('deviceFilter').value.toLowerCase();
-  const status   = document.getElementById('statusFilter').value;
-  const platform = document.getElementById('platformFilter').value;
-  const trust    = document.getElementById('trustFilter').value;
-  let visible = 0;
-  document.querySelectorAll('#devices-tbody .device-row').forEach(row => {
-    const matchText     = !text     || row.textContent.toLowerCase().includes(text);
-    const matchStatus   = !status   || row.dataset.status   === status;
-    const matchPlatform = !platform || row.dataset.platform === platform;
-    const matchTrust    = !trust    || row.dataset.trust    === trust;
-    const show = matchText && matchStatus && matchPlatform && matchTrust;
-    row.style.display = show ? '' : 'none';
-    // Also hide the expand row for hidden rows
-    const rowId = row.querySelector('[data-expand-icon]')?.dataset.expandIcon;
-    if (rowId) { const er = document.getElementById('expand-' + rowId); if (er) er.style.display = 'none'; }
-    if (show) visible++;
-  });
-  document.getElementById('deviceCount').textContent = visible + ' device' + (visible !== 1 ? 's' : '') + ' — click a row to inspect posture & details';
-}
-function _clearFilters() {
-  ['deviceFilter','statusFilter','platformFilter','trustFilter'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  _filterDevices();
-}
+
+  function _clearDeviceFilters() {
+    document.getElementById('deviceFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('platformFilter').value = '';
+    document.getElementById('trustFilter').value = '';
+    _filterDevices();
+  }
 </script>
 {% endblock %}
