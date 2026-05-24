@@ -2,8 +2,19 @@
 
 package process
 
-import "os/exec"
+import (
+	"os/exec"
+	"syscall"
+)
+
+const createNoWindow = 0x08000000
 
 func HideWindow(cmd *exec.Cmd) {
-	_ = cmd
+	if cmd == nil {
+		return
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: createNoWindow,
+	}
 }

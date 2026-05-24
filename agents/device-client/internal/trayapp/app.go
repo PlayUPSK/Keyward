@@ -44,7 +44,7 @@ func (a *App) IsEnrolled() bool {
 
 func (a *App) LoginActionLabel() string {
 	if a.IsEnrolled() {
-		return "Login"
+		return "Open portal"
 	}
 	return "Login & enroll"
 }
@@ -92,7 +92,7 @@ func (a *App) OpenLog() error {
 
 func (a *App) LoginOrEnroll(ctx context.Context) error {
 	if a.IsEnrolled() {
-		return a.OpenLogin()
+		return a.OpenPortal()
 	}
 
 	result, err := enroll.Start(ctx, a.Config, enroll.StartRequest{

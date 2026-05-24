@@ -12,6 +12,21 @@ import (
 )
 
 const netSetupDomainName = 3
+const tpmVersionNone = 0
+
+var (
+	kernel32DLL                    = windows.NewLazySystemDLL("kernel32.dll")
+	procGetFirmwareEnvironmentVar = kernel32DLL.NewProc("GetFirmwareEnvironmentVariableW")
+	tbsDLL                         = windows.NewLazySystemDLL("tbs.dll")
+	procTbsiGetDeviceInfo          = tbsDLL.NewProc("Tbsi_GetDeviceInfo")
+)
+
+type tbsDeviceInfo struct {
+	StructVersion    uint32
+	TPMVersion       uint32
+	TPMInterfaceType uint32
+	TPMImpRevision   uint32
+}
 
 func collectPlatform(ctx context.Context, info *Info) {
 	info.OSVersion = firstNonEmpty(
@@ -50,11 +65,11 @@ func collectPlatform(ctx context.Context, info *Info) {
 		info.Domain = domain
 		info.DirectoryService = "active_directory"
 	}
-	setSecurity(info, "secure_boot", registryDword(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Control\SecureBoot\State`, "UEFISecureBootEnabled") == 1)
+	setSecurity(info, "secure_boot", windowsSecureBootEnabled())
 	setSecurity(info, "firewall", windowsFirewallEnabled())
 	setSecurity(info, "screen_lock", registryString(registry.CURRENT_USER, `Control Panel\Desktop`, "ScreenSaveActive") == "1")
-	setSecurity(info, "mdm_enrolled", registryHasSubkeys(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Enrollments`))
-	setSecurity(info, "tpm_present", registryKeyExists(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Services\TPM`))
+	setSecurity(info, "mdm_enrolled", windowsMDMEnrolled())
+	setSecurity(info, "tpm_present", windowsTPMPresent())
 	setSecurity(info, "antivirus", registryKeyExists(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows Defender`))
 	setSecurity(info, "disk_encryption", windowsBitLockerEnabled(ctx))
 	_ = ctx
@@ -139,6 +154,31 @@ func registryHasSubkeys(root registry.Key, path string) bool {
 	return err == nil && len(names) > 0
 }
 
+func windowsMDMEnrolled() bool {
+	key, err := openRegistryKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Enrollments`, registry.ENUMERATE_SUB_KEYS)
+	if err != nil {
+		return false
+	}
+	defer key.Close()
+
+	names, err := key.ReadSubKeyNames(-1)
+	if err != nil {
+		return false
+	}
+	for _, name := range names {
+		child, err := openRegistryKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Enrollments\`+name, registry.QUERY_VALUE)
+		if err != nil {
+			continue
+		}
+		enrollmentType, _, valueErr := child.GetIntegerValue("EnrollmentType")
+		child.Close()
+		if valueErr == nil && enrollmentType == 6 {
+			return true
+		}
+	}
+	return false
+}
+
 func windowsFirewallEnabled() bool {
 	profiles := []string{"DomainProfile", "StandardProfile", "PublicProfile"}
 	for _, profile := range profiles {
@@ -147,6 +187,52 @@ func windowsFirewallEnabled() bool {
 		}
 	}
 	return true
+}
+
+func openRegistryKey(root registry.Key, path string, access uint32) (registry.Key, error) {
+	key, err := registry.OpenKey(root, path, access|registry.WOW64_64KEY)
+	if err == nil {
+		return key, nil
+	}
+	return registry.OpenKey(root, path, access)
+}
+
+func windowsSecureBootEnabled() bool {
+	name, err := windows.UTF16PtrFromString("SecureBoot")
+	if err == nil {
+		guid, guidErr := windows.UTF16PtrFromString("{8be4df61-93ca-11d2-aa0d-00e098032b8c}")
+		if guidErr == nil {
+			var value [1]byte
+			ret, _, callErr := procGetFirmwareEnvironmentVar.Call(
+				uintptr(unsafe.Pointer(name)),
+				uintptr(unsafe.Pointer(guid)),
+				uintptr(unsafe.Pointer(&value[0])),
+				uintptr(len(value)),
+			)
+			if ret == 1 {
+				return value[0] == 1
+			}
+			if callErr == windows.ERROR_INVALID_FUNCTION {
+				return false
+			}
+		}
+	}
+	return registryDword(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Control\SecureBoot\State`, "UEFISecureBootEnabled") == 1
+}
+
+func windowsTPMPresent() bool {
+	var info tbsDeviceInfo
+	size := uint32(unsafe.Sizeof(info))
+	ret, _, _ := procTbsiGetDeviceInfo.Call(
+		uintptr(unsafe.Pointer(&size)),
+		uintptr(unsafe.Pointer(&info)),
+	)
+	if ret == 0 && info.TPMVersion != tpmVersionNone {
+		return true
+	}
+
+	return registryKeyExists(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Services\TPM\WMI`) ||
+		registryKeyExists(registry.LOCAL_MACHINE, `SYSTEM\CurrentControlSet\Services\TPM`)
 }
 
 func windowsBitLockerEnabled(ctx context.Context) bool {
